@@ -1,0 +1,109 @@
+{{define "dashboard"}}
+        <div class="dashboard">
+            <aside class="sidebar">
+                <header>
+                    <h2>VKTRG_DGNSTCS</h2>
+                    <br>
+
+                    <hgroup>
+                        <h5>Connected: <span id="ConnectionState" style="color: red">false</span></h5>
+                        <h5>Application: RadZines</h5>
+                        <h5>Host: http://localhost:8080/</h5>
+                    </hgroup>
+
+                </header>
+                <ul>
+                    <li>
+                        <a href="#">Service Logs</a>
+                    </li>
+                    <li>
+                        <a href="#">Jobs</a>
+                    </li>
+                </ul>
+            </aside>
+
+
+            <div class="main">
+                <div class="logs">
+                    <h1>Logs</h1>
+                    <br>
+
+
+                    <table width="100%" style="border-collapse:collapse; text-align: left">
+                        <thead>
+                        <tr>
+                            <th width="5%">ID</th>
+                            <th width="80%">Message</th>
+                            <th width="15%">Timestamp</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>0</td>
+                            {{template "log-card"}}
+                            <td>7/23/2022</td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+
+                </div>
+
+                <details class="footer">
+                    <summary>Details</summary>
+                    <div class="options" >
+                        <br>
+
+
+                        <div class="filters">
+                            <form>
+                                <fieldset>
+                                    <legend>Levels</legend>
+                                    <label><input type="checkbox">All</label>
+                                    <label><input type="checkbox">Trace</label>
+                                    <label><input type="checkbox">Debug</label>
+                                    <label><input type="checkbox">Info</label>
+                                    <label><input type="checkbox">Warn</label>
+                                    <label><input type="checkbox">Error</label>
+                                    <label><input type="checkbox">Fatal</label>
+                                </fieldset>
+                                <br>
+
+                            </form>
+                        </div>
+
+
+                        <div class="services">
+                            <fieldset>
+                                <legend>Services</legend>
+                                <label><input type="checkbox">All</label>
+                                <label><input type="checkbox">Trace</label>
+                                <label><input type="checkbox">Debug</label>
+                                <label><input type="checkbox">Info</label>
+                                <label><input type="checkbox">Warn</label>
+                                <label><input type="checkbox">Error</label>
+                                <label><input type="checkbox">Fatal</label>
+                            </fieldset>
+                        </div>
+
+                        <div class="actions">
+                            <fieldset>
+                                <legend>Actions</legend>
+                                <button type="button" name="Shit">SHIT</button>
+                            </fieldset>
+                        </div>
+
+
+                        <div class="details">
+                            <span>SHIT</span>
+                        </div>
+
+                    </div>
+
+                </details>
+
+
+            </div>
+        </div>
+{{end}}
+
