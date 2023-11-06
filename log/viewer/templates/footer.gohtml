@@ -1,0 +1,49 @@
+{{define "footer"}}
+<details class="footer">
+    <summary>Details</summary>
+    <div class="options" >
+        <br>
+
+
+        <div class="filters">
+            <form>
+                <fieldset>
+                    <legend>Levels</legend>
+                    <label><input type="checkbox">All</label>
+                    <label><input type="checkbox">Trace</label>
+                    <label><input type="checkbox">Debug</label>
+                    <label><input type="checkbox">Info</label>
+                    <label><input type="checkbox">Warn</label>
+                    <label><input type="checkbox">Error</label>
+                    <label><input type="checkbox">Fatal</label>
+                </fieldset>
+            </form>
+        </div>
+
+
+        <div class="services">
+            <fieldset>
+                <legend>Services</legend>
+                <label><input type="checkbox">All</label>
+                <label><input type="checkbox">Trace</label>
+                <label><input type="checkbox">Debug</label>
+                <label><input type="checkbox">Info</label>
+                <label><input type="checkbox">Warn</label>
+                <label><input type="checkbox">Error</label>
+                <label><input type="checkbox">Fatal</label>
+            </fieldset>
+        </div>
+
+        <div class="actions">
+            <fieldset>
+                <legend>Actions</legend>
+                <button type="button" name="Shit">SHIT</button>
+                <button hx-get="/onoff?isRunning=true" name="start" hx-swap="none">Start</button>
+                <button hx-get="/onoff?isRunning=false" name="stop" hx-swap="none">Stop</button>
+            </fieldset>
+        </div>
+
+    </div>
+
+</details>
+{{end}}

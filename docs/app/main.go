@@ -12,7 +12,7 @@ func main() {
 	wiki := docs.NewWiki(docs.Config{
 		Project:  "GBNCX",
 		Desc:     "Smart Model Rocket.",
-		DocsPath: "wiki",
+		DocsPath: "docs/wiki",
 	})
 
 	mux.Handle("/", wiki)

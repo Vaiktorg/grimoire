@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 	"runtime/debug"
+	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
 )
 
 type Log struct {
-	ID        int    `json:"order"` // Incremental ID
+	ID        uint64 `json:"order"` // Incremental ID
 	Timestamp string `json:"timestamp"`
 	Level     string `json:"level"`
 	Service   string `json:"service"`
@@ -21,48 +22,55 @@ type Log struct {
 }
 
 func (l *Log) String() string {
-	if l.Data.([]any) != nil {
+	if _, ok := l.Data.([]any); ok {
 		return fmt.Sprintf("%s\t[ %s ] %s ==> %s\n %+v \n", l.Timestamp, l.Level, l.Service, l.Msg, l.Data)
 	}
 	return fmt.Sprintf("%s\t[ %s ] %s ==> %s\n", l.Timestamp, l.Level, l.Service, l.Msg)
 }
 
 type Logger struct {
-	//store  strings.Builder
-	store     LogCache
-	LogLevels Levels
-	enc       json.Encoder
+	mu    sync.Mutex
+	cache Cache
+
+	Service   string
+	services  []string
+	LogLevels Level
+	totalLogs uint64
+	size      int
 
 	inChan chan Log
-
-	//network//
-	Handler   *WebSocketViewer
-	totalLogs uint64
+	Output chan Log
 }
 
 const (
-	DefaultLogSize = 5 * MB
+	DefaultLogSize = 20 * MB
 	MaxStoreSize   = DefaultLogSize
 )
 
-func NewLogger(appId string) (*Logger, error) {
-	viewer, err := NewWebSocketViewer(appId)
-	if err != nil {
-		return nil, err
-	}
-
+func NewLogger() (*Logger, error) {
 	l := &Logger{
-		store:     LogCache{},
+		totalLogs: 0,
+		Service:   "global",
+		inChan:    make(chan Log, 10),
+		Output:    make(chan Log, 10),
 		LogLevels: LevelTrace | LevelInfo | LevelDebug | LevelError,
-		inChan:    make(chan Log),
-
-		//network//
-		Handler: viewer,
 	}
 
-	go l.handlePersistence()
+	go l.monitorPersistence()
 
 	return l, nil
+}
+
+func (l *Logger) NewService(servName string) *Logger {
+	l.services = append(l.services, servName)
+	return &Logger{
+		inChan:    l.inChan,
+		Output:    l.Output,
+		Service:   servName,
+		services:  l.services,
+		totalLogs: l.totalLogs,
+		LogLevels: l.LogLevels,
+	}
 }
 
 // TRACE Used for debugging, should not exist after production
@@ -91,64 +99,78 @@ func (l *Logger) ERROR(errMsg error, obj ...any) {
 }
 
 // FATAL This should not have happened, very system critical, total breakage risk
-func (l *Logger) FATAL(breakage string, obj ...any) {
-	l.newMsg(breakage, obj, LevelFatal)
+func (l *Logger) FATAL(breakage string) {
+	l.newMsg(breakage, debug.Stack(), LevelFatal)
 }
 
-// INBOUND Generic Log msg injection
-func (l *Logger) INBOUND(msg Log) {
-	if l.HasLevel(l.LogLevels.Level(msg.Level)) {
-		l.inChan <- msg
+func (l *Logger) Println(in ...any) {
+	for _, data := range in {
+		println(data)
 	}
+}
+
+func (l *Logger) Printf(str string, data ...any) {
+	fmt.Printf(str, data)
 }
 
 // ==================================================
 
 func (l *Logger) Messages() []Log {
-	return l.store
+	return l.cache
 }
 func (l *Logger) Close() {
 	close(l.inChan)
-	defer l.toFile(l.store)
-
-	fmt.Println("Logger Closed!")
+	close(l.Output)
+	l.toFile(l.cache)
 }
 
-func (l *Logger) newMsg(msg string, data any, level Levels) {
+func (l *Logger) newMsg(msg string, data any, level Level) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	if l.HasLevel(level) {
-		l.inChan <- Log{
-			Timestamp: time.Now().Format("20060102150405"),
+		logMsg := Log{
+			ID:        atomic.AddUint64(&l.totalLogs, 1),
+			Timestamp: time.Now().Format("01-02-2006_03-04-05"),
 			Level:     level.String(),
 			Msg:       msg,
 			Data:      data,
-			ID:        int(atomic.AddUint64(&l.totalLogs, 1)),
+		}
+
+		l.cache.Write(logMsg)
+
+		l.inChan <- logMsg
+
+		_, err := os.Stdout.Write([]byte(logMsg.String()))
+		if err != nil {
+			panic(err)
 		}
 	}
 }
 
 // ==================================================
 
-func (l *Logger) handlePersistence() {
+func (l *Logger) monitorPersistence() {
 	go func() {
 		for msg := range l.inChan {
-			mem := int(unsafe.Sizeof(l.store) + unsafe.Sizeof(""))
-			if mem >= MaxStoreSize.Val() {
+			l.size += int(unsafe.Sizeof(l.cache) + unsafe.Sizeof(""))
+			if l.size >= MaxStoreSize.Val() {
 				l.dumpLog()
 			}
 
-			l.store.Write(msg)
-			os.Stdout.WriteString(msg.String())
+			l.Output <- msg
 		}
 	}()
 }
 
 func (l *Logger) dumpLog() {
-	l.toFile(l.store)
-	l.store = LogCache{}
+	l.toFile(l.cache)
+	l.cache = Cache{}
 }
 
 func (l *Logger) toFile(msg []Log) {
-	filename := time.Now().Format("20060102150405") + ".log"
+	filename := time.Now().Format("2006-01-02__15-04") + ".log"
+	filename = l.Service + "__" + filename
 
 	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -156,40 +178,47 @@ func (l *Logger) toFile(msg []Log) {
 	}
 
 	enc := json.NewEncoder(file)
-	enc.SetIndent("", "	")
-	err = enc.Encode(msg)
-	l.must(err)
 
-	err = file.Close()
-	l.must(err)
+	l.must(enc.Encode(msg))
+	l.must(file.Close())
 }
 
 // ==================================================
 
-func (l *Logger) HasLevel(flag Levels) bool {
+func (l *Logger) HasLevel(flag Level) bool {
 	return l.LogLevels.Has(flag)
 }
-func (l *Logger) AddLevel(flag Levels) {
+func (l *Logger) AddLevel(flag Level) {
 	l.LogLevels.Set(flag)
 }
-func (l *Logger) ClearLevel(flag Levels) {
+func (l *Logger) ClearLevel(flag Level) {
 	l.LogLevels.Clear(flag)
 }
-func (l *Logger) ToggleLevel(flag Levels) {
+func (l *Logger) ToggleLevel(flag Level) {
 	l.LogLevels.Toggle(flag)
+
 }
 
 // ==================================================
-func (l *Logger) must(e error) {
+func (l *Logger) must(err error) {
 	defer func() {
-		if e, ok := recover().(error); ok {
-			_, _ = fmt.Fprint(os.Stdout, e)
+		if e := recover(); e != nil {
+			_, _ = fmt.Fprint(os.Stdout, e.(error))
 		}
 	}()
 
-	if e != nil {
+	if err != nil {
 		stack := debug.Stack()
 		l.FATAL(string(stack))
-		panic(e)
+		panic(err)
+	}
+}
+
+func (l *Logger) canWriteToChannel(ch chan Log) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
 	}
 }

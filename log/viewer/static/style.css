@@ -10,6 +10,7 @@ html, body {
 }
 table, th, td {
     border:1px solid black;
+    border-collapse:collapse; text-align: left
 }
 th,td {
     padding: calc(var(--space) / 2)
@@ -65,9 +66,13 @@ button:active{
     background: #ccc;
 }
 
+tbody {
+    overflow-y: auto;    /* Trigger vertical scroll    */
+    overflow-x: hidden;  /* Hide the horizontal scroll */
+}
 
 .dashboard {  display: grid;
-    grid-template-columns: 0.2fr 1.8fr;
+    grid-template-columns: 0.3fr 1.7fr;
     grid-template-rows: 2fr;
     gap: 0;
     grid-auto-flow: row;
@@ -110,7 +115,7 @@ button:active{
     display: grid;
     grid-auto-columns: 1fr;
     grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 2.9fr 0.1fr;
+    grid-template-rows: 1fr 1fr;
     gap: 0;
     grid-template-areas:
     "filters services actions"
@@ -154,6 +159,7 @@ button:active{
 }
 .error {
     background:  #e74c3c;
+    color: white;
 }
 .warn {
     background:  #f5b041;

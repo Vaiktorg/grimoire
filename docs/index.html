@@ -10,123 +10,7 @@
     </head>
 
     <style>
-        :root {
-            --spacing: 1em;
-            --aside-spacing: 20em;
-        }
 
-        html {
-            height: 100%;
-            font-size: smaller;
-        }
-
-        body {
-            font-family: Consolas, sans-serif;
-            color: black;
-            background-color: white;
-            padding: 0;
-            margin: 0;
-        }
-
-        header, main, aside, footer {
-            margin: 0;
-            box-sizing: border-box;
-        }
-
-        header {
-            font-size: 1.3em;
-            text-align: center;
-            text-transform: capitalize;
-            padding: var(--spacing);
-            background-color: black;
-            color: white;
-        }
-
-        main {
-            margin: var(--spacing) var(--spacing) var(--spacing) calc(196px + var(--spacing) ) !important; /* 160px off left plus 8px margin */
-        }
-
-        .views {
-            display: flex;
-        }
-
-        article {
-            width: 50%;
-            flex-grow: 1;
-            padding: 1em;
-        }
-
-        textarea {
-            height: 100%;
-            width: 100%;
-        }
-
-        img {
-            width: 50%;
-        }
-
-        aside {
-            height: 100%;
-            width: 196px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            background-color: black;
-            overflow-x: hidden;
-            color: white;
-        }
-
-        aside h1,
-        aside h2,
-        aside h3,
-        aside h4,
-        aside h5,
-        aside h6 {
-            font-weight: normal;
-            padding-left: 8px;
-        }
-
-        aside > ul {
-            background: white;
-            padding: 16px 32px;
-            border: 1px solid;
-            margin: 0;
-        }
-
-        aside > ul > li {
-            margin-bottom: 4px;
-        }
-
-        a {
-            color: #CE3262;
-        }
-
-        button[onclick]{
-            padding: .5em;
-            border: 1px solid;
-            border-color: #00ADD8 #00ADD8 #CE3262 #CE3262;
-            height: fit-content;
-            background: transparent;
-        }
-        button[onclick]:hover{
-            color: #00ADD8;
-        }
-        button[onclick]:active{
-            color: #CE3262;
-        }
-
-        footer {
-            display: block;
-            clear: both;
-            position: fixed;
-            bottom: 0;
-            width: inherit;
-            background-color: black;
-            color: white;
-            padding: 8px;
-            font-size: xx-small;
-            text-align: center;
-        }
     </style>
 
     <body>
@@ -136,7 +20,7 @@
             GBNCX Wiki v1
         </header>
 
-        <h5>Overall</h5>
+        <h5>Documents</h5>
 
         <ul>
             {{range $_, $v := .TOC}}

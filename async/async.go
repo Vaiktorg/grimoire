@@ -1,6 +1,4 @@
-package main
-
-import "fmt"
+package async
 
 // IAsync -----------------------------------------------------------------------------------------------------
 // Implement this to be executed asynchronously on IAsync Operations
@@ -49,42 +47,10 @@ func (r PromiseRes[T]) Then(handler func(T) error) error {
 
 // AsyncOp ----------------------------------------------------------------------------------------------------
 
-type AsyncStr struct {
-	msg string
-}
-type AsyncInt struct {
-	num int
+type AsyncOp[T comparable] struct {
+	Val T
 }
 
-func (a *AsyncStr) Exec() (string, error) {
-	return a.msg, nil
-}
-func (a *AsyncInt) Exec() (int, error) {
-	return a.num, nil
-}
-
-func main() {
-	aStr := &AsyncStr{msg: "Hello World"}
-	aInt := &AsyncInt{num: 1234567890}
-
-	strProm := Async[string](aStr)
-	intProm := Async[int](aInt)
-
-	err := strProm.Then(func(str string) error {
-		fmt.Println(str)
-
-		return nil
-	})
-	if err != nil {
-		println(err)
-	}
-
-	err = intProm.Then(func(num int) error {
-		fmt.Println(num)
-
-		return nil
-	})
-	if err != nil {
-		println(err)
-	}
+func (a *AsyncOp[T]) Exec() (T, error) {
+	return a.Val, nil
 }

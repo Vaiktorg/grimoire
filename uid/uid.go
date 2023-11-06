@@ -12,7 +12,10 @@ import (
 )
 
 // http://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const AlphaNumeric = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const UPPERCASEAlphaNumeric = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const Alphabetic = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const Numeric = "0123456789"
 
 const (
 	letterIdxBits = 6                    // 6 bits to represent a letter index
@@ -30,7 +33,11 @@ type UID string
 
 // NewUID takes constant letterBytes and returns random string of length n.
 func NewUID(n int) UID {
-	return newBytes(n)
+	return newBytes(n, AlphaNumeric)
+}
+
+func NewUIDSrc(n int, set string) UID {
+	return newBytes(n, set)
 }
 
 func (b UID) Bytes() []byte {
@@ -44,15 +51,15 @@ func (b UID) Len() int {
 }
 
 // NewBytes takes letterBytes from parameters and returns random string of length n.
-func newBytes(n int) UID {
+func newBytes(n int, set string) UID {
 	bytes := make([]byte, n)
 	// A models.Int63() generates 63 random bits, enough for letterIdxMax characters!
 	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
 		if remain == 0 {
 			cache, remain = src.Int63(), letterIdxMax
 		}
-		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
-			bytes[i] = letterBytes[idx]
+		if idx := int(cache & letterIdxMask); idx < len(set) {
+			bytes[i] = set[idx]
 			i--
 		}
 		cache >>= letterIdxBits

@@ -10,26 +10,26 @@ package log
    Fatal - Any error that is forcing a shutdown of the service or application to prevent data loss (or further data loss). I reserve these only for the most heinous errors and situations where there is guaranteed to have been data corruption or loss.
 */
 
-type Levels uint8
+type Level uint8
 
 const (
-	LevelNull  Levels = iota // ∅	- disable line
-	LevelTrace               // trace - white
-	LevelDebug               // debug	- grey
-	LevelInfo                // info	- blue
-	LevelWarn                // warn	- orange
-	LevelError               // error	- red
-	LevelFatal               // fatal	- black
+	LevelNull  Level = iota // ∅	- disable line
+	LevelTrace              // trace - white
+	LevelDebug              // debug	- grey
+	LevelInfo               // info	- blue
+	LevelWarn               // warn	- orange
+	LevelError              // error	- red
+	LevelFatal              // fatal	- black
 )
 
-func (l *Levels) Set(flag Levels)      { *l = *l | flag }
-func (l *Levels) Clear(flag Levels)    { *l = *l &^ flag }
-func (l *Levels) Toggle(flag Levels)   { *l = *l ^ flag }
-func (l *Levels) Has(flag Levels) bool { return *l&flag != 0 }
-func (l *Levels) Is(flag Levels) bool  { return *l == flag }
+func (l *Level) Set(flag Level)      { *l = *l | flag }
+func (l *Level) Clear(flag Level)    { *l = *l &^ flag }
+func (l *Level) Toggle(flag Level)   { *l = *l ^ flag }
+func (l *Level) Has(flag Level) bool { return *l&flag != 0 }
+func (l *Level) Is(flag Level) bool  { return *l == flag }
 
-func (l Levels) String() string {
-	switch l {
+func (l *Level) String() string {
+	switch *l {
 	case LevelTrace:
 		return "TRACE"
 	case LevelDebug:
@@ -47,7 +47,7 @@ func (l Levels) String() string {
 	}
 }
 
-func (Levels) Level(str string) Levels {
+func (*Level) Level(str string) Level {
 	switch str {
 	case "TRACE":
 		return LevelTrace
@@ -63,6 +63,23 @@ func (Levels) Level(str string) Levels {
 		return LevelFatal
 	default:
 		return LevelNull
+	}
+}
+
+func (l *Level) Color() string {
+	switch *l {
+	case LevelFatal:
+		return "fatal"
+	case LevelError:
+		return "error"
+	case LevelWarn:
+		return "warn"
+	case LevelInfo:
+		return "info"
+	case LevelDebug:
+		return "debug"
+	default:
+		return "trace"
 	}
 }
 

@@ -104,7 +104,7 @@ func (wk *Wiki) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET Handler for reading a document
+// GET Viewer for reading a document
 func (wk *Wiki) GET(w http.ResponseWriter, r *http.Request) {
 	docName := r.URL.Query().Get("doc")
 

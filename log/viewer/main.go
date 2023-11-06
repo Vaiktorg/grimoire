@@ -2,25 +2,41 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/vaiktorg/grimoire/log/log"
+	log2 "github.com/vaiktorg/grimoire/log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 )
 
 func main() {
-	logger, err := log.NewLogger("TestLogger1")
+	logger, err := log2.NewLogger()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	logger.TRACE("Start Server")
+	go func() {
+		for {
+			switch rand.Intn(3) {
+			case 0:
+				logger.TRACE("this is a TraceTest")
+			case 1:
+				logger.WARN("this is a warning")
+			case 2:
+				logger.ERROR(errors.New("this is an error"))
+			}
+
+			time.Sleep(1 * time.Second)
+		}
+	}()
 
 	Server(&http.Server{
 		Addr:    ":8080",
-		Handler: logger.Handler,
+		Handler: log2.NewLogViewer("TestApp", logger),
 	}, func() {
 		logger.Close()
 	})
@@ -29,7 +45,7 @@ func main() {
 func Server(server *http.Server, close func()) {
 	go func() {
 		err := server.ListenAndServe()
-		if err == os.ErrClosed {
+		if errors.Is(err, os.ErrClosed) {
 			fmt.Println(err)
 		}
 	}()
@@ -49,6 +65,5 @@ func Server(server *http.Server, close func()) {
 		fmt.Println(err)
 	}
 
-	fmt.Println("Shutting Down")
 	os.Exit(0)
 }

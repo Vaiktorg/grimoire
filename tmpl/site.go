@@ -1,7 +1,7 @@
 package tmpl
 
 import (
-	"github.com/labstack/echo/v4"
+	"bytes"
 	"html/template"
 	"io"
 	"io/fs"
@@ -9,38 +9,77 @@ import (
 	"strings"
 )
 
+// Site encapsulates the template engine and handles rendering of HTML templates.
+// It organizes templates into partialsPath, layouts, and pages, and provides
+// methods for rendering them.
+//
+// Example Usage:
+//
+//	site := NewSite("/path/to/templates", template.FuncMap{"customFunc": myFunc})
+//	err := site.Render(writer, "page.layout", data)
+//
+// This will render the template found in "/path/to/templates/page.layout.gohtml" using
+// the data provided, and write the output to the writer.
 type Site struct {
 	t *template.Template
+	w io.Writer
 
-	tmplPaths   []string
-	layoutPaths map[string]string
-	pagesPaths  map[string]string
+	partialsPath map[string]string
+	layoutPaths  map[string]string
+	pagesPaths   map[string]string
 }
 
-func NewSite(rootPath string, funcMap template.FuncMap) echo.Renderer {
+// NewSite initializes and returns a new Site object.
+// rootPath: Directory where the templates are stored.
+// funcMap: Template functions to be used.
+func NewSite(rootPath string, funcMap template.FuncMap) *Site {
 	return new(Site).parseTemplates(rootPath, funcMap)
 }
 
-// Render TODO: Test if Through render you can send HTML Blob and JSON after.
-func (s *Site) Render(w io.Writer, viewName string, data interface{}, _ echo.Context) error {
+func (s *Site) RenderPartialFunc(partialName string, data any) (string, error) {
+	var buf bytes.Buffer
+
+	// Read partial template from file
+	t, err := template.ParseFiles(s.partialsPath[partialName])
+	if err != nil {
+		return "", err
+	}
+
+	// Execute the partial template
+	err = t.Execute(&buf, data)
+	if err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
+// Render renders a template.
+// w: Writer interface where output is written.
+// viewName: Name of the template to render, may include layout e.g "page.layout".
+// data: Data to be passed to the template.
+func (s *Site) Render(w io.Writer, viewName string, data interface{}) error {
 	viewNameParts := strings.Split(viewName, ".") // 0: Page; 1: Layout
 
-	var pageName string
+	//var pageName string
 	var layoutName string
 
 	if len(viewNameParts) == 2 {
-		pageName = viewNameParts[0]
+		//pageName = viewNameParts[0]
 		layoutName = viewNameParts[1]
 	} else if len(viewNameParts) == 1 {
-		pageName = viewNameParts[0]
+		//pageName = viewNameParts[0]
 		layoutName = "index"
 	}
 
-	t := template.Must(s.t.Clone())
-	return template.Must(t.ParseFiles(append(s.tmplPaths, s.layoutPaths[layoutName], s.pagesPaths[pageName])...)).ExecuteTemplate(w, layoutName, data)
+	//t := template.Must(s.t.Clone())
+	//return template.Must(t.ParseFiles(append(s.partialsPath, s.layoutPaths[layoutName], s.pagesPaths[pageName])...)).ExecuteTemplate(w, layoutName, data)
+	return s.t.ExecuteTemplate(w, layoutName, data)
 }
 
-func (s *Site) parseTemplates(rootPath string, funcMap template.FuncMap) echo.Renderer {
+// parseTemplates parses templates from rootPath and organizes them into
+// layout, partial, and page categories. It also attaches any custom functions.
+func (s *Site) parseTemplates(rootPath string, funcMap template.FuncMap) *Site {
 	s.pagesPaths = make(map[string]string)
 	s.layoutPaths = make(map[string]string)
 
@@ -57,7 +96,7 @@ func (s *Site) parseTemplates(rootPath string, funcMap template.FuncMap) echo.Re
 		case "page":
 			s.pagesPaths[ext[0]] = path
 		case "partial":
-			s.tmplPaths = append(s.tmplPaths, path)
+			s.partialsPath[ext[0]] = path
 		case "layout":
 			s.layoutPaths[ext[0]] = path
 
@@ -73,19 +112,4 @@ func (s *Site) parseTemplates(rootPath string, funcMap template.FuncMap) echo.Re
 	s.t = template.New("").Funcs(funcMap)
 
 	return s
-}
-
-type ViewRender struct {
-	Engine *Site
-	Name   string
-	Data   any
-}
-
-// Instance implement gin interface
-func (s *Site) Instance(name string, data any) ViewRender {
-	return ViewRender{
-		Engine: s,
-		Name:   name,
-		Data:   data,
-	}
 }
