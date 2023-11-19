@@ -8,6 +8,7 @@ package uid
 
 import (
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -23,7 +24,10 @@ const (
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
 )
 
-var src = rand.NewSource(time.Now().UnixNano())
+var (
+	mu  sync.Mutex
+	src = rand.NewSource(time.Now().UnixNano())
+)
 
 func init() {
 	src.Seed(time.Now().UnixNano())
@@ -33,6 +37,9 @@ type UID string
 
 // NewUID takes constant letterBytes and returns random string of length n.
 func NewUID(n int) UID {
+	mu.Lock()
+	defer mu.Unlock()
+
 	return newBytes(n, AlphaNumeric)
 }
 

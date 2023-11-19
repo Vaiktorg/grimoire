@@ -3,186 +3,196 @@ package tests
 import (
 	"errors"
 	"github.com/vaiktorg/grimoire/log"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"regexp"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
-var logger *log.Logger
-var loggerServices *log.Logger
-var msgTotal uint32
+const (
+	totalLogAmount = 10000
+	sleepTime      = 1 * time.Millisecond
+)
 
 func TestMain(m *testing.M) {
-	l, err := log.NewLogger()
-	if err != nil {
-		println(err.Error())
-		os.Exit(1)
-	}
-
-	l.LogLevels = log.LevelTrace | log.LevelDebug | log.LevelInfo | log.LevelWarn | log.LevelError | log.LevelFatal
-	logger = l
-	loggerServices = l.NewService("ServiceNameABC")
-	defer l.Close()
-
-	//Start Test
 	m.Run()
 }
 
-func TestTrace(t *testing.T) {
-	time.Sleep(time.Second / 4)
+func TestLoggingCaching(t *testing.T) {
+	t.Cleanup(cleanup)
 
-	logger.TRACE("TRACE MSG")
-	messages := logger.Messages()
+	logger := log.NewLogger(log.Config{ServiceName: "TestLogger", CanOutput: true})
+	servLogger := logger.NewServiceLogger(log.Config{ServiceName: "TestLoggerService", CanOutput: true})
 
-	trace := log.LevelTrace
-	if messages[msgTotal].Level != trace.String() {
-		t.FailNow()
-	}
+	t.Run("ServiceLogger", func(t *testing.T) {
+		defer servLogger.Close()
 
-	println(messages[0].Level)
+		// Number of messages to test caching with.
+		numMessages := totalLogAmount
+		receivedMessages := uint64(0)
+
+		// InitialTime
+		tm := time.Now()
+
+		wg := new(sync.WaitGroup)
+		wg.Add(totalLogAmount)
+		go servLogger.Output(func(l log.Log) error {
+			if l.Service == "TestLoggerService" {
+				defer wg.Done()
+				atomic.AddUint64(&receivedMessages, 1)
+			} else if l.Service == "TestLogger" {
+				t.Errorf("service logger should not receive from main logger")
+			}
+			return nil
+		})
+
+		// Send multiple log messages.
+		for i := 0; i < numMessages; i++ {
+			go func(msgNum int) {
+				// Use different logging levels for diversity.
+				switch msgNum % 5 {
+				case 0:
+					servLogger.TRACE("test TRACE message")
+				case 1:
+					servLogger.DEBUG("test DEBUG message")
+				case 2:
+					servLogger.INFO("test INFO message")
+				case 3:
+					servLogger.WARN("test WARN message")
+				case 4:
+					servLogger.ERROR(errors.New("test ERROR message"))
+				}
+			}(i)
+		}
+
+		// Wait for all logging operations to complete.
+		wg.Wait()
+
+		// Retrieve the cached messages.
+		messages := servLogger.Messages(log.Pagination{
+			Page:   1,
+			Amount: int(receivedMessages),
+		})
+
+		// Check how long it took us
+		t.Log("Elapsed Time Since: ", time.Since(tm).String())
+
+		// Check if the messages have been cached.
+		if int(receivedMessages) != numMessages {
+			t.Errorf("Expected %d cached messages, found %d", numMessages, receivedMessages)
+			return
+		}
+
+		// Optionally, verify the content of each message.
+		for i, msg := range messages {
+			expectedMsg := "test " + msg.Level + " message"
+			if msg.Msg != expectedMsg {
+				t.Errorf("Message %d does not match expected content: got '%s', want '%s'", i, msg.Msg, expectedMsg)
+				return
+			}
+		}
+	})
+
+	t.Run("MainLogger", func(t *testing.T) {
+		defer logger.Close()
+
+		// Number of messages to test caching with.
+		numMessages := totalLogAmount
+		receivedMessages := uint64(0)
+		// InitialTime
+		tm := time.Now()
+
+		wg := new(sync.WaitGroup)
+		wg.Add(numMessages * 2)
+
+		go logger.Output(func(l log.Log) error {
+			defer wg.Done()
+			atomic.AddUint64(&receivedMessages, 1)
+			return nil
+		})
+
+		// Send multiple log messages.
+		for i := 0; i < numMessages; i++ {
+			func(msgNum int) {
+				// Use different logging levels for diversity.
+				switch msgNum % 5 {
+				case 0:
+					logger.TRACE("test TRACE message")
+				case 1:
+					logger.DEBUG("test DEBUG message")
+				case 2:
+					logger.INFO("test INFO message")
+				case 3:
+					logger.WARN("test WARN message")
+				case 4:
+					logger.ERROR(errors.New("test ERROR message"))
+				}
+			}(i)
+		}
+
+		// Wait for all logging operations to complete.
+		wg.Wait()
+
+		// Retrieve the cached messages.
+		messages := logger.Messages(log.Pagination{
+			Page:   1,
+			Amount: int(receivedMessages),
+		})
+
+		// Check how long it took us
+		t.Log("Elapsed Time Since: ", time.Since(tm).String())
+
+		// Check if the messages have been cached.
+		if int(receivedMessages) != numMessages*2 {
+			t.Errorf("Expected %d cached messages, found %d", numMessages*2, receivedMessages)
+			return
+		}
+
+		// Optionally, verify the content of each message.
+		for i, msg := range messages {
+			expectedMsg := "test " + msg.Level + " message"
+			if msg.Msg != expectedMsg {
+				t.Errorf("Message %d does not match expected content: got '%s', want '%s'", i, msg.Msg, expectedMsg)
+				return
+			}
+		}
+	})
 }
-func TestDebug(t *testing.T) {
-	time.Sleep(time.Second / 4)
 
-	logger.DEBUG("DEBUG MSG")
-	messages := logger.Messages()
+func cleanup() {
+	var logPaths []string
+	_ = filepath.Walk(".", func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 
-	debug := log.LevelDebug
-	if messages[len(messages)-1].Level != debug.String() {
-		t.FailNow()
+		if info.IsDir() {
+			return nil
+		}
+
+		parts := regexp.MustCompile(`__([^_]+)__([^_]+)__`).FindStringSubmatch(filepath.Base(path))
+		if len(parts) != 3 {
+			return nil
+		}
+
+		//parts[0] : BasePath
+		//parts[1] : ServiceName
+		//parts[2] : RunID
+
+		if filepath.Ext(info.Name()) == ".log" {
+			logPaths = append(logPaths, path)
+		}
+
+		return nil
+	})
+	for _, path := range logPaths {
+		err := os.RemoveAll(path)
+		if err != nil {
+			panic(err)
+		}
 	}
-
-	println(messages[msgTotal].Level)
-}
-func TestInfo(t *testing.T) {
-	time.Sleep(time.Second / 4)
-
-	logger.INFO("INFO MSG")
-	messages := logger.Messages()
-
-	info := log.LevelInfo
-	if messages[len(messages)-1].Level != info.String() {
-		t.FailNow()
-	}
-
-	println(messages[msgTotal].Level)
-}
-func TestWarn(t *testing.T) {
-	time.Sleep(time.Second / 4)
-
-	logger.WARN("ERROR MSG")
-	messages := logger.Messages()
-
-	warn := log.LevelWarn
-	if messages[len(messages)-1].Level != warn.String() {
-		t.FailNow()
-	}
-
-	println(messages[msgTotal].Level)
-}
-func TestError(t *testing.T) {
-	time.Sleep(time.Second / 4)
-
-	logger.ERROR(errors.New("ERROR MSG"))
-	messages := logger.Messages()
-
-	levelError := log.LevelError
-	if messages[len(messages)-1].Level != levelError.String() {
-		t.FailNow()
-	}
-
-	println(messages[msgTotal].Level)
-}
-func TestFatal(t *testing.T) {
-	time.Sleep(time.Second / 4)
-
-	logger.FATAL("FATAL MSG")
-	messages := logger.Messages()
-
-	fatal := log.LevelFatal
-	if messages[len(messages)-1].Level != fatal.String() {
-		t.FailNow()
-	}
-
-	println(messages[msgTotal].Level)
-}
-
-// ------------------
-func TestServiceTrace(t *testing.T) {
-	time.Sleep(time.Second / 4)
-
-	loggerServices.TRACE("TRACE MSG")
-	messages := loggerServices.Messages()
-
-	trace := log.LevelTrace
-	if messages[len(messages)-1].Level != trace.String() {
-		t.FailNow()
-	}
-
-	println(messages[0].Level)
-}
-func TestServiceDebug(t *testing.T) {
-	time.Sleep(time.Second / 4)
-
-	loggerServices.DEBUG("DEBUG MSG")
-	messages := loggerServices.Messages()
-
-	debug := log.LevelDebug
-	if messages[len(messages)-1].Level != debug.String() {
-		t.FailNow()
-	}
-
-	println(messages[msgTotal].Level)
-}
-func TestServiceInfo(t *testing.T) {
-	time.Sleep(time.Second / 4)
-
-	loggerServices.INFO("INFO MSG")
-	messages := loggerServices.Messages()
-
-	info := log.LevelInfo
-	if messages[len(messages)-1].Level != info.String() {
-		t.FailNow()
-	}
-
-	println(messages[msgTotal].Level)
-}
-func TestServiceWarn(t *testing.T) {
-	time.Sleep(time.Second / 4)
-
-	loggerServices.WARN("ERROR MSG")
-	messages := loggerServices.Messages()
-
-	warn := log.LevelWarn
-	if messages[len(messages)-1].Level != warn.String() {
-		t.FailNow()
-	}
-
-	println(messages[msgTotal].Level)
-}
-func TestServiceError(t *testing.T) {
-	time.Sleep(time.Second / 4)
-
-	loggerServices.ERROR(errors.New("ERROR MSG"))
-	messages := loggerServices.Messages()
-
-	levelError := log.LevelError
-	if messages[len(messages)-1].Level != levelError.String() {
-		t.FailNow()
-	}
-
-	println(messages[msgTotal].Level)
-}
-func TestServiceFatal(t *testing.T) {
-	time.Sleep(time.Second / 4)
-
-	loggerServices.FATAL("FATAL MSG")
-	messages := loggerServices.Messages()
-
-	fatal := log.LevelFatal
-	if messages[len(messages)-1].Level != fatal.String() {
-		t.FailNow()
-	}
-
-	println(messages[msgTotal].Level)
 }

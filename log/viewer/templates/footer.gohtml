@@ -37,9 +37,8 @@
         <div class="actions">
             <fieldset>
                 <legend>Actions</legend>
-                <button type="button" name="Shit">SHIT</button>
-                <button hx-get="/onoff?isRunning=true" name="start" hx-swap="none">Start</button>
-                <button hx-get="/onoff?isRunning=false" name="stop" hx-swap="none">Stop</button>
+                <button id="toggle" hx-get="/actions?action=onoff" hx-swap="none">Toggle Start/Stop</button>
+                <label for="toggle" hx-get="/actions?action=isRunning" hx-trigger="load" hx-swap="innerHTML"></label>
             </fieldset>
         </div>
 

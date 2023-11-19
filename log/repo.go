@@ -1,35 +1,68 @@
 package log
 
-import (
-	"sort"
-)
+import "sync"
 
-type Cache []Log
-
-func (m *Cache) FilterByLevel(level string) (ret []Log) {
-	for _, t := range *m {
-		if t.Level == level {
-			ret = append(ret, t)
-		}
-	}
-	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].Level < ret[j].Level
-	})
-	return
+type Repo[T any] struct {
+	mu       sync.Mutex
+	services map[string]T
 }
 
-func (m *Cache) FilterByService(service string) (ret []Log) {
-	for _, t := range *m {
-		if t.Service == service {
-			ret = append(ret, t)
-		}
+func NewRepo[T any]() *Repo[T] {
+	return &Repo[T]{
+		services: make(map[string]T),
 	}
-	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].Service < ret[j].Service
-	})
-	return
 }
 
-func (m *Cache) Write(msg Log) {
-	*m = append(*m, msg)
+func (r *Repo[T]) Has(key string) bool {
+	if _, ok := r.services[key]; ok {
+		return true
+	}
+	return false
+}
+
+func (r *Repo[T]) Add(key string, service T) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.services[key]; !ok {
+		r.services[key] = service
+	}
+}
+
+func (r *Repo[T]) Get(key string) T {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.services[key]
+}
+
+func (r *Repo[T]) All() map[string]T {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.services
+}
+
+func (r *Repo[T]) Iterate(h func(T)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, v := range r.services {
+		h(v)
+	}
+}
+
+func (r *Repo[T]) Delete(key string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	delete(r.services, key)
+}
+
+func (r *Repo[T]) Clear() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.services = nil
+	r.services = make(map[string]T)
 }
