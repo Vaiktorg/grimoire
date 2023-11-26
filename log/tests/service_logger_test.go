@@ -1,20 +1,20 @@
 package tests
 
 import (
-	"errors"
 	"github.com/vaiktorg/grimoire/log"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func TestLogger(t *testing.T) {
-	logger := log.NewLogger(log.Config{ServiceName: "MainLogger"})
+	logger := log.NewLogger(log.Config{ServiceName: "MainLogger", CanOutput: true})
 	defer logger.Close()
 
 	t.Cleanup(cleanup)
 
-	var serviceLogger log.ILogger
+	var serviceLogger log.IServiceLogger
 	t.Run("NewServiceLogger", func(t *testing.T) {
 		serviceName := "ServiceLogger"
 		serviceLogger = logger.NewServiceLogger(log.Config{ServiceName: serviceName, CanOutput: true})
@@ -35,47 +35,51 @@ func TestLogger(t *testing.T) {
 	})
 
 	t.Run("ConcurrentLogging", func(t *testing.T) {
-		var wg sync.WaitGroup
+		wg := new(sync.WaitGroup)
+		numMessages := 100
 
-		for i := 0; i < 100; i++ {
-			wg.Add(1)
-			go func(idx int) {
-				defer wg.Done()
-				serviceLogger.DEBUG("Concurrent Log", idx)
-			}(i)
+		wg.Add(numMessages)
+		for i := 0; i < numMessages; i++ {
+			go serviceLogger.DEBUG("Concurrent Log", i)
+			wg.Done()
 		}
 
 		wg.Wait()
 
-		time.Sleep(sleepTime) // Allow time for log processing
+		time.Sleep(sleepTime)
+		messages := serviceLogger.Messages(log.Pagination{Page: 1, Amount: numMessages})
 
-		if len(serviceLogger.Messages(log.Pagination{Page: 1, Amount: 100})) < 100 {
-			t.Error("Expected 100 log entries from concurrent logging")
+		if len(messages) < numMessages {
+			t.Errorf("Expected 100 log entries from concurrent logging; got %d", len(messages))
 		}
 	})
 
 	t.Run("LoggerOutput", func(t *testing.T) {
-		wg := sync.WaitGroup{}
-		go func() {
-			wg.Add(1)
-			serviceLogger.Output(func(l log.Log) error {
-				if l.Service != "ServiceLogger" {
-					t.Errorf("Received l from unexpected service: %v", l.Service)
-					return errors.New("received l from unexpected service")
-				}
+		wg := new(sync.WaitGroup)
 
-				return nil
-			})
+		wg.Add(102)
+		rec := uint64(0)
+
+		go serviceLogger.Output(func(l log.Log) {
+			if l.Service != "ServiceLogger" {
+				t.Errorf("Received l from unexpected service: %v", l.Service)
+			}
+			atomic.AddUint64(&rec, 1)
 			wg.Done()
-		}()
-		wg.Wait()
+		})
+
 		serviceLogger.INFO("Test for Output Channel", "Test Data")
+
 		time.Sleep(sleepTime)
+		if atomic.LoadUint64(&rec) != 102 {
+			t.Fatalf("not received total sent logs in test")
+		}
+
+		wg.Wait()
 
 	})
 
 	t.Run("TotalSent", func(t *testing.T) {
-		t.Log("TotalSent")
 		totalSentBefore := logger.TotalSent()
 
 		logger.DEBUG("Test Total Sent", "Test Data")

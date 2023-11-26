@@ -3,9 +3,11 @@ package log
 import (
 	"errors"
 	"fmt"
+	"github.com/vaiktorg/grimoire/store"
 	"github.com/vaiktorg/grimoire/uid"
 	"os"
 	"runtime/debug"
+	_ "runtime/pprof"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,29 +34,25 @@ func (l *Log) String() string {
 }
 
 type Logger struct {
-	mu  sync.RWMutex
-	iwg sync.WaitGroup
-	owg sync.WaitGroup
+	wg sync.WaitGroup
 
-	closed atomic.Bool
+	closeChan chan struct{}
+	runId     string
 
-	runId string
-
-	LogLevels Level
-	Cache     *Cache[Log]
+	logLevels Level
+	Cache     *store.Cache[Log]
 	size      uint
 	totalSent *uint64
 
-	canPrint bool
+	canOutput atomic.Bool
+	canPrint  bool
+	Service   string
 
-	Service  string
-	services *Repo[ILogger]
+	services *store.Repo[ILogger]
+	inChan   chan Log
 
-	inChan  chan Log
-	outChan chan Log
-
-	canOutput bool
-	outInt    chan Log
+	outChan  chan Log
+	pOutChan chan Log
 }
 
 type Config struct {
@@ -64,74 +62,75 @@ type Config struct {
 }
 
 func NewLogger(config Config) ILogger {
-	runId := UID(8)
+	runId := uid.NewUID(8).String()
 	totalSent := uint64(0)
 
 	l := &Logger{
 		runId:     runId,
 		totalSent: &totalSent,
 
-		LogLevels: LevelTrace | LevelInfo | LevelDebug | LevelError,
-		inChan:    make(chan Log, DefaultLogLen),
+		logLevels: LevelTrace | LevelInfo | LevelDebug | LevelError,
 
-		outInt:  make(chan Log, DefaultLogLen),
-		outChan: make(chan Log, DefaultLogLen),
+		inChan:    make(chan Log, store.DefaultLen),
+		outChan:   make(chan Log, store.DefaultLen),
+		pOutChan:  nil,
+		closeChan: make(chan struct{}),
 
-		Cache: NewCache[Log](config.ServiceName, runId),
+		Cache:    store.NewIDCache[Log](config.ServiceName, runId),
+		services: store.NewRepo[ILogger](),
 
-		services: NewRepo[ILogger](),
-
-		canOutput: config.CanOutput,
-		Service:   config.ServiceName,
-		canPrint:  config.CanPrint,
+		Service:  config.ServiceName,
+		canPrint: config.CanPrint,
 	}
 
-	l.iwg.Add(1)
-	go l.writeLogInput()
+	l.canOutput.Store(config.CanOutput)
+
+	go l.inputLogs()
 
 	return l
 }
 
 // ==================================================
 
-func (l *Logger) ServiceName() string {
-	return l.Service
-}
-
-func (l *Logger) NewServiceLogger(config Config) ILogger {
+func (l *Logger) NewServiceLogger(config Config) IServiceLogger {
 	if l.services.Has(config.ServiceName) {
-		l.ERROR(errors.New("could not create services logger " + config.ServiceName))
+		l.ERROR(errors.New("service logger " + config.ServiceName + " already existed"))
 		return nil
 	}
 
 	service := &Logger{
 		runId:     l.runId,
+		logLevels: l.logLevels,
 		totalSent: l.totalSent,
 
-		LogLevels: l.LogLevels,
-		inChan:    make(chan Log, DefaultLogLen), // Log Input -> Proc
+		inChan:   make(chan Log, store.DefaultLen), // Log Input -> Proc
+		outChan:  make(chan Log, store.DefaultLen), // Proc 	  -> Output(func(Log))
+		pOutChan: l.outChan,
 
-		outChan: make(chan Log, DefaultLogLen), // Proc 	  -> Output(func(Log))
-		outInt:  l.outChan,                     // Proc 	  -> Parent Logger
+		closeChan: make(chan struct{}),
 
-		Cache: NewCache[Log](config.ServiceName, l.runId),
+		Cache:    store.NewIDCache[Log](config.ServiceName, l.runId),
+		services: store.NewRepo[ILogger](),
 
-		services: NewRepo[ILogger](),
-
-		canOutput: config.CanOutput,
-		Service:   config.ServiceName,
-		canPrint:  config.CanPrint,
+		Service:  config.ServiceName,
+		canPrint: config.CanPrint,
 	}
+
+	service.canOutput.Store(config.CanOutput)
+
+	go service.inputLogs()
 
 	l.services.Add(config.ServiceName, service)
 
-	l.iwg.Add(1)
-	go service.writeLogInput()
-
 	return service
 }
-func (l *Logger) Services() *Repo[ILogger] {
-	return l.services
+
+func (l *Logger) ServiceName() string {
+	return l.Service
+}
+
+func (l *Logger) Services() map[string]ILogger {
+	return l.services.All()
 }
 
 // ==================================================
@@ -182,12 +181,9 @@ type Pagination struct {
 }
 
 func (l *Logger) Messages(p Pagination) []Log {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	start := (p.Page - 1) * p.Amount
 	end := start + p.Amount
-	total := int(l.Cache.flushTotal)*DefaultLogLen + l.Cache.Len()
+	total := l.Cache.FlushLen()*store.DefaultLen + l.Cache.Len()
 
 	if end > total {
 		end = total
@@ -197,7 +193,7 @@ func (l *Logger) Messages(p Pagination) []Log {
 		return nil
 	}
 
-	return l.Cache.Collection(l.Service)[start:end]
+	return l.Cache.ReadAll(l.Service)[start:end]
 }
 
 func (l *Logger) BatchLogs(logs ...Log) {
@@ -205,120 +201,88 @@ func (l *Logger) BatchLogs(logs ...Log) {
 		l.inChan <- log
 	}
 }
-func (l *Logger) Output(handler func(log Log) error) {
+func (l *Logger) Output(handler func(log Log)) {
 	for log := range l.outChan {
-		if err := handler(log); err != nil {
-			l.ERROR(err)
-			break
+		if handler != nil {
+			handler(log)
 		}
 	}
 }
 func (l *Logger) TotalSent() uint64 {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	return *l.totalSent
-}
-func (l *Logger) Len() int {
-	return l.Cache.Len()
+	return atomic.LoadUint64(l.totalSent)
 }
 
 func (l *Logger) Close() {
-	if l.closed.CompareAndSwap(false, true) {
-		return
-	}
-
-	l.services.Iterate(func(logger ILogger) {
+	l.services.Iterate(func(servName string, logger ILogger) {
 		logger.Close()
-		l.Services().Delete(logger.ServiceName())
+		l.services.Delete(servName)
 	})
+	l.canOutput.Swap(false)
 
 	close(l.inChan)
-	if l.outInt != nil {
-		close(l.outInt)
-	}
-
-	l.iwg.Wait()
-
+	l.wg.Wait()
 	close(l.outChan)
 
-	go l.must(l.Cache.Flush())
+	l.Cache.Flush()
 }
 
 // ==================================================
 
 func (l *Logger) newMsg(msg string, data any, level Level) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	if !l.HasLevel(level) {
-		return
+		return // Skip if logger is closeChan or level is not enabled
 	}
 
-	l.iwg.Add(1)
+	l.wg.Add(1)
 	l.inChan <- Log{
 		ID:        atomic.AddUint64(l.totalSent, 1),
+		SourceId:  uid.NewUID(8).String(),
 		Timestamp: time.Now().Format("01-02-2006_03-04-05"),
 		Level:     level.String(),
 		Service:   l.Service,
 		Msg:       msg,
-		SourceId:  uid.NewUID(8).String(),
 		Data:      data,
 	}
 }
-func (l *Logger) writeLogInput() {
-	for log := range l.inChan {
-		l.Cache.Write(log)
 
-		if l.Cache.Len() >= DefaultLogLen {
-			go l.must(l.Cache.Flush())
+func (l *Logger) inputLogs() {
+	for in := range l.inChan {
+		l.Cache.Write(in)
+
+		if l.Cache.IsFull() {
+			go l.Cache.Flush()
 		}
+
 		if l.canPrint {
-			_, _ = os.Stdout.WriteString(log.String())
+			_, _ = os.Stdout.WriteString(in.String())
 		}
 
-		go l.forwardLog(log)
-
-		l.iwg.Done()
+		l.internalOutputLogs(in) // Send it to output proc
 	}
 }
-func (l *Logger) forwardLog(log Log) {
-	if l.outInt != nil {
-		l.outInt <- log
-	}
 
-	if l.canOutput {
-		l.outChan <- log
-	}
+func (l *Logger) internalOutputLogs(out Log) {
+	defer l.wg.Done()
+	if l.canOutput.Load() {
+		l.outChan <- out
 
+		if l.pOutChan != nil {
+			l.pOutChan <- out
+		}
+	}
 }
 
 // ==================================================
 
 func (l *Logger) HasLevel(flag Level) bool {
-	return l.LogLevels.Has(flag)
+	return l.logLevels.Has(flag)
 }
 func (l *Logger) AddLevel(flag Level) {
-	l.LogLevels.Set(flag)
+	l.logLevels.Set(flag)
 }
 func (l *Logger) ClearLevel(flag Level) {
-	l.LogLevels.Clear(flag)
+	l.logLevels.Clear(flag)
 }
 func (l *Logger) ToggleLevel(flag Level) {
-	l.LogLevels.Toggle(flag)
-
-}
-
-// ==================================================
-func (l *Logger) must(err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			_, _ = fmt.Fprint(os.Stdout, e.(error))
-		}
-	}()
-
-	if err != nil {
-		l.ERROR(err)
-		panic(err)
-	}
+	l.logLevels.Toggle(flag)
 }

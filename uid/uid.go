@@ -43,7 +43,17 @@ func NewUID(n int) UID {
 	return newBytes(n, AlphaNumeric)
 }
 
+func NewUIDStr(n int) UID {
+	mu.Lock()
+	defer mu.Unlock()
+
+	return newBytes(n, AlphaNumeric)
+}
+
 func NewUIDSrc(n int, set string) UID {
+	mu.Lock()
+	defer mu.Unlock()
+
 	return newBytes(n, set)
 }
 

@@ -15,7 +15,7 @@ import (
 
 const (
 	totalLogAmount = 10000
-	sleepTime      = 1 * time.Millisecond
+	sleepTime      = 10 * time.Millisecond
 )
 
 func TestMain(m *testing.M) {
@@ -26,28 +26,24 @@ func TestLoggingCaching(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	logger := log.NewLogger(log.Config{ServiceName: "TestLogger", CanOutput: true})
+	defer logger.Close()
+
 	servLogger := logger.NewServiceLogger(log.Config{ServiceName: "TestLoggerService", CanOutput: true})
 
 	t.Run("ServiceLogger", func(t *testing.T) {
-		defer servLogger.Close()
-
 		// Number of messages to test caching with.
 		numMessages := totalLogAmount
 		receivedMessages := uint64(0)
 
-		// InitialTime
-		tm := time.Now()
-
 		wg := new(sync.WaitGroup)
-		wg.Add(totalLogAmount)
-		go servLogger.Output(func(l log.Log) error {
+		wg.Add(numMessages)
+		go servLogger.Output(func(l log.Log) {
 			if l.Service == "TestLoggerService" {
 				defer wg.Done()
 				atomic.AddUint64(&receivedMessages, 1)
 			} else if l.Service == "TestLogger" {
 				t.Errorf("service logger should not receive from main logger")
 			}
-			return nil
 		})
 
 		// Send multiple log messages.
@@ -78,9 +74,6 @@ func TestLoggingCaching(t *testing.T) {
 			Amount: int(receivedMessages),
 		})
 
-		// Check how long it took us
-		t.Log("Elapsed Time Since: ", time.Since(tm).String())
-
 		// Check if the messages have been cached.
 		if int(receivedMessages) != numMessages {
 			t.Errorf("Expected %d cached messages, found %d", numMessages, receivedMessages)
@@ -98,23 +91,17 @@ func TestLoggingCaching(t *testing.T) {
 	})
 
 	t.Run("MainLogger", func(t *testing.T) {
-		defer logger.Close()
-
 		// Number of messages to test caching with.
 		numMessages := totalLogAmount
 		receivedMessages := uint64(0)
-		// InitialTime
-		tm := time.Now()
 
 		wg := new(sync.WaitGroup)
-		wg.Add(numMessages * 2)
-
-		go logger.Output(func(l log.Log) error {
+		go logger.Output(func(l log.Log) {
 			defer wg.Done()
 			atomic.AddUint64(&receivedMessages, 1)
-			return nil
 		})
 
+		wg.Add(numMessages * 2)
 		// Send multiple log messages.
 		for i := 0; i < numMessages; i++ {
 			func(msgNum int) {
@@ -142,9 +129,6 @@ func TestLoggingCaching(t *testing.T) {
 			Page:   1,
 			Amount: int(receivedMessages),
 		})
-
-		// Check how long it took us
-		t.Log("Elapsed Time Since: ", time.Since(tm).String())
 
 		// Check if the messages have been cached.
 		if int(receivedMessages) != numMessages*2 {

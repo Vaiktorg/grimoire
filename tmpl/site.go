@@ -10,7 +10,7 @@ import (
 )
 
 // Site encapsulates the template engine and handles rendering of HTML templates.
-// It organizes templates into partialsPath, layouts, and pages, and provides
+// It organizes templates into partials, layouts, and pages, and provides
 // methods for rendering them.
 //
 // Example Usage:
@@ -24,9 +24,9 @@ type Site struct {
 	t *template.Template
 	w io.Writer
 
-	partialsPath map[string]string
-	layoutPaths  map[string]string
-	pagesPaths   map[string]string
+	partials map[string]string
+	layouts  map[string]string
+	pages    map[string]string
 }
 
 // NewSite initializes and returns a new Site object.
@@ -40,7 +40,7 @@ func (s *Site) RenderPartialFunc(partialName string, data any) (string, error) {
 	var buf bytes.Buffer
 
 	// Read partial template from file
-	t, err := template.ParseFiles(s.partialsPath[partialName])
+	t, err := template.ParseFiles(s.partials[partialName])
 	if err != nil {
 		return "", err
 	}
@@ -73,15 +73,15 @@ func (s *Site) Render(w io.Writer, viewName string, data interface{}) error {
 	}
 
 	//t := template.Must(s.t.Clone())
-	//return template.Must(t.ParseFiles(append(s.partialsPath, s.layoutPaths[layoutName], s.pagesPaths[pageName])...)).ExecuteTemplate(w, layoutName, data)
+	//return template.Must(t.ParseFiles(append(s.partials, s.layouts[layoutName], s.pages[pageName])...)).ExecuteTemplate(w, layoutName, data)
 	return s.t.ExecuteTemplate(w, layoutName, data)
 }
 
 // parseTemplates parses templates from rootPath and organizes them into
 // layout, partial, and page categories. It also attaches any custom functions.
 func (s *Site) parseTemplates(rootPath string, funcMap template.FuncMap) *Site {
-	s.pagesPaths = make(map[string]string)
-	s.layoutPaths = make(map[string]string)
+	s.pages = make(map[string]string)
+	s.layouts = make(map[string]string)
 
 	err := filepath.Walk(rootPath, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
@@ -94,11 +94,11 @@ func (s *Site) parseTemplates(rootPath string, funcMap template.FuncMap) *Site {
 		}
 		switch ext[1] {
 		case "page":
-			s.pagesPaths[ext[0]] = path
+			s.pages[ext[0]] = path
 		case "partial":
-			s.partialsPath[ext[0]] = path
+			s.partials[ext[0]] = path
 		case "layout":
-			s.layoutPaths[ext[0]] = path
+			s.layouts[ext[0]] = path
 
 		}
 

@@ -67,17 +67,3 @@ func (*Level) Level(str string) Level {
 }
 
 // ==================================================
-
-type Size int
-
-func (s Size) Val() int { return int(s) }
-
-const (
-	_ Size = 1.0 << (10 * iota) // ignore first value by assigning to blank identifier
-	KB
-	MB
-	GB
-	TB
-	PB
-	EB
-)

@@ -13,18 +13,15 @@ func TestLoggerOutput(t *testing.T) {
 	t.Run("MainLoggerOutputOnly", func(t *testing.T) {
 		mainLogger := log.NewLogger(log.Config{ServiceName: "MainService", CanOutput: true})
 		defer mainLogger.Close()
-
-		serviceLogger := mainLogger.NewServiceLogger(log.Config{ServiceName: "ServiceLogger", CanOutput: false})
-		defer serviceLogger.Close()
+		serviceLogger := mainLogger.NewServiceLogger(log.Config{ServiceName: "ServiceLogger", CanOutput: true})
 
 		testMessage := "Test log message"
 		received := make(chan bool, 1) // Use buffered channel to avoid blocking
 
-		go mainLogger.Output(func(logEntry log.Log) error {
+		go mainLogger.Output(func(logEntry log.Log) {
 			if logEntry.Msg == testMessage {
 				received <- true
 			}
-			return nil
 		})
 
 		serviceLogger.INFO(testMessage) // This should not appear in mainLogger's output
@@ -42,17 +39,14 @@ func TestLoggerOutput(t *testing.T) {
 		defer mainLogger.Close()
 
 		serviceLogger := mainLogger.NewServiceLogger(log.Config{ServiceName: "ServiceLogger", CanOutput: true})
-		defer serviceLogger.Close()
 
 		testMessage := "Test log message"
 		received := make(chan bool, 1) // Use buffered channel to avoid blocking
 
-		go serviceLogger.Output(func(logEntry log.Log) error {
+		go serviceLogger.Output(func(logEntry log.Log) {
 			if logEntry.Msg == testMessage {
 				received <- true
 			}
-
-			return nil
 		})
 
 		serviceLogger.INFO(testMessage) // This should appear in serviceLogger's output only
@@ -70,28 +64,23 @@ func TestLoggerOutput(t *testing.T) {
 		defer mainLogger.Close()
 
 		serviceLogger := mainLogger.NewServiceLogger(log.Config{ServiceName: "ServiceLogger", CanOutput: true})
-		defer serviceLogger.Close()
 
 		testMessage := "Test log message"
 		mainReceived := make(chan bool, 1)
 		serviceReceived := make(chan bool, 1)
 
 		// Listen to main logger output
-		go mainLogger.Output(func(logEntry log.Log) error {
+		go mainLogger.Output(func(logEntry log.Log) {
 			if logEntry.Msg == testMessage {
 				mainReceived <- true
 			}
-
-			return nil
 		})
 
 		// Listen to service logger output
-		go serviceLogger.Output(func(logEntry log.Log) error {
+		go serviceLogger.Output(func(logEntry log.Log) {
 			if logEntry.Msg == testMessage {
 				serviceReceived <- true
 			}
-
-			return nil
 		})
 
 		serviceLogger.INFO(testMessage) // Log should appear in both outputs
@@ -119,10 +108,9 @@ func TestLoggerOutput(t *testing.T) {
 		receivedCount := int64(0)
 
 		wg := new(sync.WaitGroup)
-		go mainLogger.Output(func(log log.Log) error {
+		go mainLogger.Output(func(log log.Log) {
 			defer wg.Done()
 			atomic.AddInt64(&receivedCount, 1)
-			return nil
 		})
 
 		wg.Add(batchCount)
@@ -139,20 +127,18 @@ func TestLoggerOutput(t *testing.T) {
 	})
 
 	t.Run("ServiceLoggerBatchOutput", func(t *testing.T) {
-		mainLogger := log.NewLogger(log.Config{ServiceName: "MainService", CanOutput: false})
+		mainLogger := log.NewLogger(log.Config{ServiceName: "MainService", CanOutput: true})
 		defer mainLogger.Close()
 
 		serviceLogger := mainLogger.NewServiceLogger(log.Config{ServiceName: "ServiceLogger", CanOutput: true})
-		defer serviceLogger.Close()
 
 		batchCount := totalLogAmount
 		receivedCount := uint64(0)
 
 		wg := new(sync.WaitGroup)
-		go serviceLogger.Output(func(log log.Log) error {
-			defer wg.Done()
+		go serviceLogger.Output(func(log log.Log) {
 			atomic.AddUint64(&receivedCount, 1)
-			return nil
+			wg.Done()
 		})
 
 		wg.Add(batchCount)
@@ -173,17 +159,15 @@ func TestLoggerOutput(t *testing.T) {
 		defer mainLogger.Close()
 
 		serviceLogger := mainLogger.NewServiceLogger(log.Config{ServiceName: "ServiceLogger", CanOutput: true})
-		defer serviceLogger.Close()
 
 		batchCount := totalLogAmount
 		totalBatchCount := batchCount * 2 // Since both main and service logger will log
 		receivedCount := int64(0)
 
 		wg := new(sync.WaitGroup)
-		go mainLogger.Output(func(log log.Log) error {
+		go mainLogger.Output(func(log log.Log) {
 			defer wg.Done()
 			atomic.AddInt64(&receivedCount, 1)
-			return nil
 		})
 
 		wg.Add(totalBatchCount)
