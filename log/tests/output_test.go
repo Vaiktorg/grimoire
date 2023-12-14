@@ -69,14 +69,14 @@ func TestLoggerOutput(t *testing.T) {
 		mainReceived := make(chan bool, 1)
 		serviceReceived := make(chan bool, 1)
 
-		// Listen to main logger output
+		// OnMessage to main logger output
 		go mainLogger.Output(func(logEntry log.Log) {
 			if logEntry.Msg == testMessage {
 				mainReceived <- true
 			}
 		})
 
-		// Listen to service logger output
+		// OnMessage to service logger output
 		go serviceLogger.Output(func(logEntry log.Log) {
 			if logEntry.Msg == testMessage {
 				serviceReceived <- true

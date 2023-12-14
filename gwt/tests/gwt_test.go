@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"bytes"
+	"github.com/vaiktorg/grimoire/authentity/src"
 	"github.com/vaiktorg/grimoire/gwt"
 	"log"
 	"testing"
@@ -11,81 +13,89 @@ func TestMain(m *testing.M) {
 	defer m.Run()
 }
 
-type Account struct {
-	gwt.Value
-	Username string
-	Password string
-}
-
-var ResTok gwt.Token
-var TestAccount = Account{
-	Value: gwt.Value{
-		Issuer:    "Vaiktorg",
-		Recipient: "Test",
-		Timestamp: time.Now(),
+var TestAccount = gwt.GWT[src.AuthBody]{
+	Header: gwt.Header{
+		Issuer:    "Authentity",
+		Recipient: "Vaiktorg",
+		Expires:   time.Now(),
 	},
-	Username: "username-test-123",
-	Password: "password-test-123",
+	Body: src.AuthBody{
+		Permission: 0,
+	},
 }
 
 func TestEncodeGWT(t *testing.T) {
-	enc := gwt.NewEncoder[Account](gwt.Spice{
-		Salt: []byte("salt"),
+	enc := gwt.NewEncoder[*gwt.GWT[src.AuthBody]](gwt.Spice{
+		Salt:   []byte("salt"),
+		Pepper: []byte("pepper"),
 	})
 
-	err := enc.Encode(TestAccount, func(token gwt.Token) error {
-		if token.Token == "" {
-			t.Errorf("token string is empty")
-			t.FailNow()
-		}
+	token, err := enc.Encode(&TestAccount)
+	if token.Token == "" {
+		t.Errorf("token string is empty")
+		t.FailNow()
+	}
 
-		if token.Signature == nil {
-			t.Errorf("token signature is empty")
-			t.FailNow()
-		}
+	if token.Signature == nil {
+		t.Errorf("token signature is empty")
+		t.FailNow()
+	}
 
-		ResTok = token
-		log.Println(token)
+	TestAccount.Token.Token = token.Token
+	TestAccount.Token.Signature = token.Signature
 
-		return nil
-	})
+	t.Logf("%+v", token)
+
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 }
 
 func TestDecodeGWT(t *testing.T) {
-	dec := gwt.NewDecoder[Account](gwt.Spice{
-		Salt: []byte("salt"),
-	})
+	spice := gwt.Spice{
+		Salt:   []byte("salt"),
+		Pepper: []byte("pepper"),
+	}
 
-	if ResTok.Token == "" {
+	dec := gwt.NewDecoder[*gwt.GWT[src.AuthBody]](spice)
+
+	if TestAccount.Token.Token == "" {
 		t.Errorf("token string is empty")
 		t.FailNow()
 	}
 
-	if ResTok.Signature == nil {
-		t.Errorf("token string is empty")
+	token, err := dec.Decode(TestAccount.Token.Token)
+	if err = token.ValidateGWT(nil); err != nil {
+		t.Errorf(err.Error())
 		t.FailNow()
 	}
 
-	err := dec.Decode(ResTok, func(account Account) error {
-		if !dec.ValidateSignature(account, ResTok.Signature) {
-			t.Errorf("invalid signature")
-		}
+	if !bytes.Equal(token.Token.Signature, TestAccount.Token.Signature) {
+		t.Error("non matching signatures")
+		return
+	}
 
-		if account.Username != TestAccount.Username ||
-			account.Password != TestAccount.Password ||
-			account.Value.Issuer != TestAccount.Value.Issuer ||
-			account.Value.Recipient != TestAccount.Value.Recipient ||
-			account.Value.Timestamp != account.Value.Timestamp {
+	if token.Header.Recipient != TestAccount.Header.Recipient {
+		t.Errorf("mismatch recipient")
+	}
+	if token.Header.Expires.Compare(TestAccount.Header.Expires) != 0 {
+		t.Errorf("mismatch expire date")
+	}
 
-			t.Errorf("decoding failed, field mismatch")
-			t.FailNow()
-		}
+	if token.Header.Issuer != TestAccount.Header.Issuer {
+		t.Errorf("mismatch issuer")
+	}
+	if token.Token.Token != TestAccount.Token.Token {
+		t.Errorf("mismatch token.token")
+	}
 
-		return nil
-	})
+	if !bytes.Equal(token.Token.Signature, TestAccount.Token.Signature) {
+		t.Errorf("mismatch token.signature")
+		t.FailNow()
+	}
+
+	log.Printf("%+v", token)
+
 	if err != nil {
 		t.Errorf(err.Error())
 	}

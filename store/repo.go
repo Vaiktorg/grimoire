@@ -1,19 +1,29 @@
 package store
 
-import "sync"
+import (
+	"sync"
+)
 
-type Repo[T any] struct {
+type Repo[K comparable, V any] struct {
 	mu  sync.RWMutex
-	col map[string]T
+	col map[K]V
 }
 
-func NewRepo[T any]() *Repo[T] {
-	return &Repo[T]{
-		col: make(map[string]T),
+func NewRepo[KEY comparable, VAL any]() *Repo[KEY, VAL] {
+	return &Repo[KEY, VAL]{
+		col: make(map[KEY]VAL),
 	}
 }
 
-func (r *Repo[T]) Has(key string) bool {
+func (r *Repo[K, V]) Add(key K, value V) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.col[key]; !ok {
+		r.col[key] = value
+	}
+}
+func (r *Repo[K, V]) Has(key K) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -22,37 +32,37 @@ func (r *Repo[T]) Has(key string) bool {
 	}
 	return false
 }
-
-func (r *Repo[T]) Add(key string, service T) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, ok := r.col[key]; !ok {
-		r.col[key] = service
-	}
-}
-
-func (r *Repo[T]) Get(key string) T {
+func (r *Repo[K, V]) Get(key K) V {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	return r.col[key]
 }
 
-func (r *Repo[T]) All() map[string]T {
+func (r *Repo[K, V]) All() map[K]V {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	return r.col
 }
+func (r *Repo[K, V]) Slice() []V {
+	ret := make([]V, len(r.col))
+	r.Iterate(func(_ K, v V) {
+		ret = append(ret, v)
+	})
+	return ret
+}
 
-func (r *Repo[T]) Iterate(h func(k string, v T)) {
-	r.mu.RLock()
+func (r *Repo[K, V]) With(k K, h func(V) error) error {
+	return h(r.Get(k))
+}
+func (r *Repo[K, V]) Iterate(h func(K, V)) {
+	r.mu.Lock()
 	var opQueue []func()
 	for k, v := range r.col {
 		opQueue = append(opQueue, func() { h(k, v) })
 	}
-	r.mu.RUnlock()
+	r.mu.Unlock()
 
 	for _, op := range opQueue {
 		op()
@@ -60,17 +70,16 @@ func (r *Repo[T]) Iterate(h func(k string, v T)) {
 	opQueue = nil // Clear operation queue
 }
 
-func (r *Repo[T]) Delete(key string) {
+func (r *Repo[K, V]) Delete(k K) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	delete(r.col, key)
+	delete(r.col, k)
 }
-
-func (r *Repo[T]) Clear() {
+func (r *Repo[K, V]) Clear() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.col = nil
-	r.col = make(map[string]T)
+	r.col = make(map[K]V)
 }

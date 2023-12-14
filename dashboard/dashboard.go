@@ -94,7 +94,7 @@ func (d *Dashboard) checkLastMessages(r *http.Request) {
 		return
 	}
 
-	// LogID are sequential N+1, meaning if last ID is 563,
+	// LogID are sequential N+1, meaning if last ClientID is 563,
 	// then it should return the last 563 logs since runtime.
 	cached := d.logger.Messages(log.Pagination{
 		Page:   1,
@@ -108,7 +108,7 @@ func (d *Dashboard) checkLastMessages(r *http.Request) {
 }
 func (d *Dashboard) executeLogPartial(w http.ResponseWriter, msgs ...log.Log) {
 	partialBuff := bytes.Buffer{}
-	err := d.tmpl.ExecuteTemplate(&partialBuff, "pkg-card", msgs)
+	err := d.tmpl.ExecuteTemplate(&partialBuff, "src-card", msgs)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -17,178 +18,127 @@ type Spice struct {
 }
 
 type (
-	Encoder[T any] struct {
+	Encoder[T comparable] struct {
+		mu    sync.Mutex
 		spice Spice
+		buff  *bytes.Buffer
 	}
-
-	// Decoder ...
-	Decoder[T any] struct {
+	Decoder[T comparable] struct {
+		mu    sync.Mutex
 		spice Spice
-	}
-
-	// Value generates the user's Token
-	Value struct {
-		Issuer    string    // where the token originated
-		Recipient string    // who the token belongs to
-		Timestamp time.Time // timeout is enforced
-	}
-
-	// Token gets delivered to the user.
-	Token struct {
-		// "1a2.b3c.4d5" [data -> byte -> b64].
-		// Return this to requester.
-		Token string
-
-		// ___.___.OOO  Last section of Token.
-		// Save this in system.
-		Signature []byte
+		buff  *bytes.Buffer
 	}
 )
 
 const (
-	ErrorTokenParts        = "token parts are invalid"
-	ErrorNoTokProvided     = "no token provided"
-	ErrorFailedToEncodeSig = "failed to encode token signature"
-	ErrorSignatureNotMatch = "signatures do not match"
+	ErrorMalformedToken        = "token parts are invalid"
+	ErrorInvalidToken          = "no token provided"
+	ErrorInvalidTokenSignature = "invalid token signature"
+	ErrorFailedToEncodeSig     = "failed to encode token signature"
+	ErrorSignatureNotMatch     = "signatures do not match"
 )
 
-func NewEncoder[T any](spice Spice) Encoder[T] {
+const TokenExpireTime = time.Hour * 24
+
+func NewEncoder[T comparable](spice Spice) Encoder[T] {
 	return Encoder[T]{
 		spice: spice,
+		buff:  bytes.NewBuffer([]byte{}),
 	}
 }
-func (e *Encoder[T]) Encode(values T, res func(token Token) error) error {
-	encode := make(chan T)
-	resChan := make(chan Token)
-	err := make(chan error)
+func (e *Encoder[T]) Encode(data T) (ret Token, err error) {
+	e.mu.Lock()
 
-	go e.encodeValue(encode, resChan, err)
-
-	encode <- values
-	select {
-	case er := <-err:
-		return er
-	case val := <-resChan:
-		return res(val)
-	}
-}
-func (e *Encoder[T]) encodeValue(valChan chan T, resChan chan Token, errChan chan error) {
-
-	val := <-valChan
-	// Value JSON string
-	valueBuffer := new(bytes.Buffer)
-	err := json.NewEncoder(valueBuffer).Encode(val)
+	// Header
+	err = json.NewEncoder(e.buff).Encode(data)
 	if err != nil {
-		errChan <- err
 		return
 	}
 
 	// ------------------------------------------------------------------------------------------------
 	// Gen Signature
-	hashSignature, err := genSignature(valueBuffer.Bytes(), e.spice)
+	hashSignature, err := GenSignature(e.buff.Bytes(), e.spice)
 	if err != nil {
-		errChan <- err
 		return
 	}
 
 	// ------------------------------------------------------------------------------------------------
 	// Encode to B64
-	b64value, b64signature := encodeB64(valueBuffer.Bytes(), hashSignature)
+	b64value := encodeB64(e.buff.Bytes())
+	b64signature := encodeB64(hashSignature)
 
 	// ------------------------------------------------------------------------------------------------
 	// Results in token "b64Header.b64Payload.b64Signature"
-	resChan <- Token{
+
+	e.buff.Reset()
+	e.mu.Unlock()
+	return Token{
 		Token: strings.Join([]string{
 			string(b64value),
 			string(b64signature),
 		}, "."),
-		Signature: hashSignature}
+		Signature: hashSignature}, nil
 }
-func encodeB64(valueBuffer, hashSignature []byte) (b64value, b64signature []byte) {
-	// ----------------------------------------------------------------------------------------------
-	// Signature Encoding
-	b64signature = make([]byte, base64.URLEncoding.EncodedLen(len(hashSignature)))
-	base64.URLEncoding.Encode(b64signature, hashSignature)
+func encodeB64(buffer []byte) (b64 []byte) {
+	b64 = make([]byte, base64.URLEncoding.EncodedLen(len(buffer)))
+	base64.URLEncoding.Encode(b64, buffer)
 
-	//----------------------------------------------------------------------------------------------
-	// Header Encoding
-	b64value = make([]byte, base64.URLEncoding.EncodedLen(len(valueBuffer)))
-	base64.URLEncoding.Encode(b64value, valueBuffer)
-
-	return b64value, b64signature
+	return
 }
 
-func NewDecoder[T any](spice Spice) Decoder[T] {
-	return Decoder[T]{spice: spice}
-}
-func (d *Decoder[T]) Decode(token Token, res func(value T) error) error {
-	decode := make(chan Token)
-	resChan := make(chan T)
-	err := make(chan error)
-
-	go d.decodeToken(decode, resChan, err)
-
-	decode <- token
-
-	select {
-	case e := <-err:
-		return e
-	case val := <-resChan:
-		return res(val)
+func NewDecoder[T comparable](spice Spice) Decoder[T] {
+	return Decoder[T]{
+		spice: spice,
+		buff:  bytes.NewBuffer([]byte{}),
 	}
 }
-func (d *Decoder[T]) decodeToken(decode chan Token, resChan chan T, errChan chan error) {
-	tkn := <-decode
-	if tkn.Token == "" {
-		errChan <- errors.New(ErrorNoTokProvided)
+func (d *Decoder[T]) Decode(token string) (ret GWT[T], err error) {
+	if token == "" {
+		return ret, errors.New(ErrorInvalidToken)
+	}
+
+	// tkn := tknParts[0]
+	// sig := tknParts[1]
+	tknParts := strings.Split(token, ".")
+	if len(tknParts) != 2 {
+		return ret, errors.New(ErrorMalformedToken)
+	}
+
+	tknBuff, err := decodeB64(tknParts[0])
+	if err != nil {
 		return
 	}
 
-	// tkn := tknB64[0]
-	// sig := tknB64[1]
-	tknB64 := strings.Split(tkn.Token, ".")
-	if len(tknB64) < 2 || len(tknB64) > 2 {
-		errChan <- errors.New(ErrorTokenParts)
-	}
-
-	tknBuff, err := decodeB64(tknB64[0])
+	sigBuff, err := decodeB64(tknParts[1])
 	if err != nil {
-		errChan <- err
-		return
-	}
-
-	sigBuff, err := decodeB64(tknB64[1])
-	if err != nil {
-		errChan <- err
 		return
 	}
 
 	// ------------------------------------------------------------------------------------------------
 	// Signature
-	hashSignature, err := genSignature(tknBuff, d.spice)
+	hashSignature, err := GenSignature(tknBuff, d.spice)
 	if err != nil {
-		errChan <- err
 		return
 	}
 
 	// ------------------------------------------------------------------------------------------------
 	// Validate
 	if !bytes.Equal(hashSignature, sigBuff) {
-		errChan <- errors.New(ErrorSignatureNotMatch)
-		return
+		return ret, errors.New(ErrorSignatureNotMatch)
 	}
 
 	// If signatures match, keep going with decoding information.
 	// ------------------------------------------------------------------------------------------------
 	// Decode data
-	var val T
-	err = json.NewDecoder(bytes.NewReader(tknBuff)).Decode(&val)
+	err = json.NewDecoder(bytes.NewReader(tknBuff)).Decode(&ret)
 	if err != nil {
-		errChan <- err
 		return
 	}
 
-	resChan <- val
+	ret.Token.Signature = sigBuff
+	ret.Token.Token = token
+
+	return ret, nil
 }
 func decodeB64(gwt string) ([]byte, error) {
 	// ------------------------------------------------------------------------------------------------
@@ -202,7 +152,7 @@ func decodeB64(gwt string) ([]byte, error) {
 	return tokenBuff, nil
 }
 
-func genSignature(tokenBuff []byte, spice Spice) ([]byte, error) {
+func GenSignature(tokenBuff []byte, spice Spice) ([]byte, error) {
 	//Generate gwt Signature from decoded payload
 	hash := hmac.New(sha256.New, spice.Salt)
 	_, err := hash.Write(tokenBuff)
@@ -213,23 +163,59 @@ func genSignature(tokenBuff []byte, spice Spice) ([]byte, error) {
 	return hash.Sum(spice.Pepper), nil
 }
 
-func (d *Decoder[T]) ValidateSignature(data T, signature []byte) bool {
-	valueBuffer := new(bytes.Buffer)
-	err := json.NewEncoder(valueBuffer).Encode(data)
-	if err != nil {
-		return false
+// =======================================================
+
+type GWT[T comparable] struct {
+	Header Header
+	Body   T
+	Token  Token
+}
+type Header struct {
+	Issuer    string    // where the token originated
+	Recipient string    // who the token belongs to
+	Expires   time.Time // When it will expire.
+}
+
+// Token gets delivered to the user.
+type Token struct {
+	// "1a2.b3c.4d5" [data -> byte -> b64].
+	// Return this to requester.
+	Token string
+
+	// ___.OOO  Last section of Token.
+	// Only accessible when decoded from token string
+	Signature []byte
+}
+
+func (gwt *GWT[T]) ValidateGWT(validationHandler func(T)) error {
+	if gwt.Header.Issuer == "" {
+		return errors.New("no issuer assigned")
 	}
 
-	// ------------------------------------------------------------------------------------------------
-	// Gen Signature
-	hashSig, err := genSignature(valueBuffer.Bytes(), d.spice)
-	if err != nil {
-		return false
+	if gwt.Header.Recipient == "" {
+		return errors.New("no recipient assigned")
 	}
 
-	if !bytes.Equal(signature, hashSig) {
-		return false
+	// may customize the time validation to more sophisticated rule if needed
+	if gwt.Header.Expires.IsZero() {
+		return errors.New("no expire date assigned")
 	}
 
-	return true
+	if time.Since(gwt.Header.Expires) >= 15*time.Minute {
+		return errors.New("no expire date assigned")
+	}
+
+	if validationHandler != nil {
+		validationHandler(gwt.Body)
+	}
+
+	if gwt.Token.Token == "" {
+		return errors.New("no token found")
+	}
+
+	if gwt.Token.Signature == nil || len(gwt.Token.Signature) == 0 {
+		return errors.New("so signature found")
+	}
+
+	return nil
 }

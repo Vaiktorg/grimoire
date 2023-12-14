@@ -15,7 +15,7 @@ type Level uint8
 const (
 	LevelNull  Level = iota // ∅	- disable line
 	LevelTrace              // trace - white
-	LevelDebug              // debug	- grey
+	LevelDebug              // _	- grey
 	LevelInfo               // info	- blue
 	LevelWarn               // warn	- orange
 	LevelError              // error	- red

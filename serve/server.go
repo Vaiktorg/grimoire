@@ -2,9 +2,10 @@ package serve
 
 import (
 	"context"
-	"crypto/tls"
+	_ "embed"
 	"errors"
 	"github.com/vaiktorg/grimoire/log"
+	"github.com/vaiktorg/grimoire/serve/simws"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,38 +15,61 @@ import (
 )
 
 type Server struct {
-	mu  sync.Mutex
-	mux http.Handler
+	mu sync.Mutex
 
-	appName string
-	config  *Config
-	server  http.Server
+	AppName string
+	addr    string
+	tlscfg  *TLSConfig
 
+	handler http.Handler
+	ws      simws.ISimWebSocket
+
+	server *http.Server
 	Logger log.ILogger
 }
 
+type IServer interface {
+	ListenAndServe()
+	ListenAndServeTLS()
+	Startup(init func(s AppConfig))
+}
+
+type AppConfig interface {
+	WebSocket(wsh func(socket simws.ISimWebSocket))
+	MUX(m func(mux *http.ServeMux))
+}
+
 func NewServer(config *Config) *Server {
+	if config == nil {
+		config = defaultConfig
+	}
+
 	return &Server{
-		appName: config.GetAppName(),
-		mux:     config.GetHandler(),
+		AppName: config.GetAppName(),
+		handler: config.GetHandler(),
+		addr:    config.GetAddr(),
 		Logger:  config.GetLoggerConfig(),
-		config:  config,
+		tlscfg:  config.GetTLSConfig(),
+		ws:      simws.NewSimWebSocket(context.Background()),
 	}
 }
 
 func (s *Server) ListenAndServe() {
 	defer s.Logger.Close()
 
-	s.server = http.Server{
-		Addr:    s.config.GetAddr(),
-		Handler: s.mux,
+	s.server = &http.Server{
+		Handler:      s.handler,
+		Addr:         s.addr,
+		ReadTimeout:  time.Minute,
+		WriteTimeout: time.Minute,
+		IdleTimeout:  time.Minute,
 	}
 
 	// Start the server in a goroutine
 	go func() {
-		s.Logger.TRACE("Listening " + s.appName + " on " + s.server.Addr)
+		s.Logger.TRACE("Listening " + s.AppName + " on " + s.addr)
 		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			s.Logger.ERROR(errors.New("ListenAndServe error: " + err.Error()))
+			s.Logger.ERROR("ListenAndServe error: " + err.Error())
 		}
 	}()
 
@@ -67,32 +91,26 @@ func (s *Server) ListenAndServe() {
 	}
 }
 func (s *Server) ListenAndServeTLS() {
-	if s.config.TLSConfig == nil ||
-		s.config.TLSConfig.CertPath == "" ||
-		s.config.TLSConfig.KeyPath == "" {
+	if s.tlscfg == nil ||
+		s.tlscfg.CertPath == "" ||
+		s.tlscfg.KeyPath == "" {
 		panic("validate tls server config file paths")
 	}
 
-	// Load your certificate and private key
-	cert, err := tls.LoadX509KeyPair(s.config.TLSConfig.CertPath, s.config.TLSConfig.KeyPath)
-	if err != nil {
-		s.Logger.FATAL(err.Error())
-	}
-
 	// Define the TLS config in a Server
-	s.server = http.Server{
-		Addr:    s.config.GetAddr(),
-		Handler: s.mux,
-		TLSConfig: &tls.Config{
-			Certificates: []tls.Certificate{cert},
-		},
+	s.server = &http.Server{
+		Handler:      s.handler,
+		Addr:         s.addr,
+		ReadTimeout:  time.Minute,
+		WriteTimeout: time.Minute,
+		IdleTimeout:  time.Minute,
 	}
 	// Close logger
 	defer s.Logger.Close()
 
 	// Start the server in a goroutine
 	go func() {
-		if err = s.server.ListenAndServeTLS("", ""); err != nil || !errors.Is(err, http.ErrServerClosed) {
+		if err := s.server.ListenAndServeTLS(s.tlscfg.CertPath, s.tlscfg.KeyPath); err != nil || !errors.Is(err, http.ErrServerClosed) {
 			s.Logger.FATAL("ListenAndServe error: " + err.Error())
 		}
 	}()
@@ -110,18 +128,29 @@ func (s *Server) ListenAndServeTLS() {
 	defer cancel()
 
 	// Doesn't block if no connections, but will otherwise wait until the timeout deadline.
-	if err = s.server.Shutdown(ctx); err != nil {
+	if err := s.server.Shutdown(ctx); err != nil {
 		s.Logger.FATAL("ListenAndServe Shutdown: " + err.Error())
 	}
 
 	// Bye bye!
-	s.Logger.TRACE(s.config.AppName + " exiting...")
+	s.Logger.TRACE(s.AppName + " exiting...")
 }
 
-func (s *Server) RegisterPaths(muxReg func(*http.ServeMux)) {
-	if mux, ok := s.mux.(*http.ServeMux); ok {
-		muxReg(mux)
+func (s *Server) Startup(init func(cfg AppConfig)) {
+	init(s)
+}
+func (s *Server) WebSocket(wsh func(socket simws.ISimWebSocket)) {
+	if sm, ok := s.handler.(*http.ServeMux); ok {
+		wsh(s.ws)
+		sm.Handle("/ws", s.ws)
 	} else {
-		s.Logger.TRACE("cannot register paths, server handler is not mux")
+		panic("server Handler is not of type *http.ServeMux")
+	}
+}
+func (s *Server) MUX(mh func(*http.ServeMux)) {
+	if sm, ok := s.handler.(*http.ServeMux); !ok {
+		mh(sm)
+	} else {
+		panic("server Handler is not of type *http.ServeMux")
 	}
 }

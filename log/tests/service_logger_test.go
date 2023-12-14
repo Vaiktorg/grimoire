@@ -14,7 +14,7 @@ func TestLogger(t *testing.T) {
 
 	t.Cleanup(cleanup)
 
-	var serviceLogger log.IServiceLogger
+	var serviceLogger log.ILogger
 	t.Run("NewServiceLogger", func(t *testing.T) {
 		serviceName := "ServiceLogger"
 		serviceLogger = logger.NewServiceLogger(log.Config{ServiceName: serviceName, CanOutput: true})

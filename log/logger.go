@@ -1,13 +1,11 @@
 package log
 
 import (
-	"errors"
 	"fmt"
 	"github.com/vaiktorg/grimoire/store"
 	"github.com/vaiktorg/grimoire/uid"
 	"os"
 	"runtime/debug"
-	_ "runtime/pprof"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -24,31 +22,29 @@ type Log struct {
 }
 
 func (l *Log) String() string {
-	dataFmt := "[%d] %s [ %s ] %s ==> %s %+v\n"
-	msgFmt := "[%d] %s [ %s ] %s ==> %s\n"
-
-	if d, ok := l.Data.([]interface{}); ok && d != nil {
-		return fmt.Sprintf(dataFmt, l.ID, l.Timestamp, l.Service, l.Level, l.Msg, l.Data)
+	if d, ok := l.Data.([]interface{}); !ok && d != nil {
+		return fmt.Sprintf("[%d] %s %s [ %s ] ==> %s %v", l.ID, l.Timestamp, l.Level, l.Service, l.Msg, l.Data)
 	}
-	return fmt.Sprintf(msgFmt, l.ID, l.Timestamp, l.Service, l.Level, l.Msg)
+	return fmt.Sprintf("[%d] %s %s [ %s ] ==> %s", l.ID, l.Timestamp, l.Level, l.Service, l.Msg)
 }
 
 type Logger struct {
 	wg sync.WaitGroup
 
+	Service   string
 	closeChan chan struct{}
-	runId     string
 
-	logLevels Level
-	Cache     *store.Cache[Log]
-	size      uint
+	runId string
+
+	Cache *store.Cache[Log]
+
 	totalSent *uint64
 
+	Persist   atomic.Bool
 	canOutput atomic.Bool
-	canPrint  bool
-	Service   string
+	canPrint  atomic.Bool
 
-	services *store.Repo[ILogger]
+	services *store.Repo[string, ILogger]
 	inChan   chan Log
 
 	outChan  chan Log
@@ -58,6 +54,7 @@ type Logger struct {
 type Config struct {
 	CanPrint    bool
 	CanOutput   bool
+	Persist     bool
 	ServiceName string
 }
 
@@ -69,21 +66,19 @@ func NewLogger(config Config) ILogger {
 		runId:     runId,
 		totalSent: &totalSent,
 
-		logLevels: LevelTrace | LevelInfo | LevelDebug | LevelError,
-
 		inChan:    make(chan Log, store.DefaultLen),
 		outChan:   make(chan Log, store.DefaultLen),
 		pOutChan:  nil,
 		closeChan: make(chan struct{}),
 
+		Service:  config.ServiceName + "_" + runId,
 		Cache:    store.NewIDCache[Log](config.ServiceName, runId),
-		services: store.NewRepo[ILogger](),
-
-		Service:  config.ServiceName,
-		canPrint: config.CanPrint,
+		services: store.NewRepo[string, ILogger](),
 	}
 
 	l.canOutput.Store(config.CanOutput)
+	l.canPrint.Store(config.CanPrint)
+	l.Persist.Store(config.Persist)
 
 	go l.inputLogs()
 
@@ -92,31 +87,29 @@ func NewLogger(config Config) ILogger {
 
 // ==================================================
 
-func (l *Logger) NewServiceLogger(config Config) IServiceLogger {
+func (l *Logger) NewServiceLogger(config Config) ILogger {
 	if l.services.Has(config.ServiceName) {
-		l.ERROR(errors.New("service logger " + config.ServiceName + " already existed"))
+		l.ERROR("service logger " + config.ServiceName + " already existed")
 		return nil
 	}
 
 	service := &Logger{
 		runId:     l.runId,
-		logLevels: l.logLevels,
 		totalSent: l.totalSent,
 
-		inChan:   make(chan Log, store.DefaultLen), // Log Input -> Proc
-		outChan:  make(chan Log, store.DefaultLen), // Proc 	  -> Output(func(Log))
-		pOutChan: l.outChan,
-
+		inChan:    make(chan Log, store.DefaultLen), // Log Input -> Proc
+		pOutChan:  l.outChan,
+		outChan:   make(chan Log, store.DefaultLen), // Proc 	  -> Output(func(Log))
 		closeChan: make(chan struct{}),
 
+		Service:  config.ServiceName + "_" + l.runId,
 		Cache:    store.NewIDCache[Log](config.ServiceName, l.runId),
-		services: store.NewRepo[ILogger](),
-
-		Service:  config.ServiceName,
-		canPrint: config.CanPrint,
+		services: store.NewRepo[string, ILogger](),
 	}
 
 	service.canOutput.Store(config.CanOutput)
+	service.canPrint.Store(config.CanPrint)
+	service.Persist.Store(config.Persist)
 
 	go service.inputLogs()
 
@@ -137,32 +130,32 @@ func (l *Logger) Services() map[string]ILogger {
 
 // TRACE Used for debugging, should not exist after production
 func (l *Logger) TRACE(info string, obj ...any) {
-	l.newMsg(info, obj, LevelTrace)
+	l.newMsg(info, LevelTrace, obj)
 }
 
 // INFO Used to tell users of things going on in their process steps
 func (l *Logger) INFO(info string, obj ...any) {
-	l.newMsg(info, obj, LevelInfo)
+	l.newMsg(info, LevelInfo, obj)
 }
 
 // DEBUG Used to communicate processes to other developers
 func (l *Logger) DEBUG(procStep string, obj ...any) {
-	l.newMsg(procStep, obj, LevelDebug)
+	l.newMsg(procStep, LevelDebug, obj)
 }
 
 // WARN  Possible breaking scenarios: If you do this, this could happen, keep it in mind, etc.
 func (l *Logger) WARN(warn string, obj ...any) {
-	l.newMsg(warn, obj, LevelWarn)
+	l.newMsg(warn, LevelWarn, obj)
 }
 
 // ERROR Something broke, print out the error message and possible entries
-func (l *Logger) ERROR(errMsg error, obj ...any) {
-	l.newMsg(errMsg.Error(), obj, LevelError)
+func (l *Logger) ERROR(errMsg string, obj ...any) {
+	l.newMsg(errMsg+"\n"+string(debug.Stack()), LevelError, obj)
 }
 
 // FATAL This should not have happened, very system critical, total breakage risk
 func (l *Logger) FATAL(breakage string) {
-	l.newMsg(breakage, debug.Stack(), LevelFatal)
+	l.newMsg(breakage+"\n"+string(debug.Stack()), LevelFatal)
 }
 
 func (l *Logger) Println(in ...any) {
@@ -228,11 +221,7 @@ func (l *Logger) Close() {
 
 // ==================================================
 
-func (l *Logger) newMsg(msg string, data any, level Level) {
-	if !l.HasLevel(level) {
-		return // Skip if logger is closeChan or level is not enabled
-	}
-
+func (l *Logger) newMsg(msg string, level Level, data ...any) {
 	l.wg.Add(1)
 	l.inChan <- Log{
 		ID:        atomic.AddUint64(l.totalSent, 1),
@@ -244,45 +233,31 @@ func (l *Logger) newMsg(msg string, data any, level Level) {
 		Data:      data,
 	}
 }
-
 func (l *Logger) inputLogs() {
 	for in := range l.inChan {
-		l.Cache.Write(in)
+		if l.Persist.Load() {
+			if l.Cache.IsFull() {
+				go l.Cache.Flush()
+			}
 
-		if l.Cache.IsFull() {
-			go l.Cache.Flush()
+			l.Cache.Write(in)
 		}
 
-		if l.canPrint {
-			_, _ = os.Stdout.WriteString(in.String())
+		if l.canPrint.Load() {
+			_, _ = os.Stdout.WriteString(in.String() + "\n")
 		}
 
-		l.internalOutputLogs(in) // Send it to output proc
+		if l.canOutput.Load() {
+			l.internalOutputLogs(in) // Send it to output proc
+		}
+
+		l.wg.Done()
 	}
 }
-
 func (l *Logger) internalOutputLogs(out Log) {
-	defer l.wg.Done()
-	if l.canOutput.Load() {
-		l.outChan <- out
+	l.outChan <- out
 
-		if l.pOutChan != nil {
-			l.pOutChan <- out
-		}
+	if l.pOutChan != nil {
+		l.pOutChan <- out
 	}
-}
-
-// ==================================================
-
-func (l *Logger) HasLevel(flag Level) bool {
-	return l.logLevels.Has(flag)
-}
-func (l *Logger) AddLevel(flag Level) {
-	l.logLevels.Set(flag)
-}
-func (l *Logger) ClearLevel(flag Level) {
-	l.logLevels.Clear(flag)
-}
-func (l *Logger) ToggleLevel(flag Level) {
-	l.logLevels.Toggle(flag)
 }
