@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/vaiktorg/grimoire/serve"
-	"github.com/vaiktorg/grimoire/serve/simws"
 	"github.com/vaiktorg/grimoire/serve/ws"
+	"github.com/vaiktorg/grimoire/util"
 	"net/http"
 )
 
@@ -16,21 +16,20 @@ func main() {
 	// Server Startup
 	serv.Startup(func(server serve.AppConfig) {
 		// Websocket Configuration
-		server.WebSocket(func(socket simws.ISimWebSocket) {
-
+		server.WebSocket(func(socket ws.IWebSocket) {
 			// Event Handler
-			socket.OnEvent(func(evType simws.EventType, sess *simws.SimConnSession) {
+			socket.OnHook(func(evType util.Hook, sess *ws.ConnSession) {
 				switch evType {
-				case simws.OnConnect:
-					fmt.Println("OnConnect: " + sess.Token.Token)
-				case simws.OnDisconnect:
-					fmt.Println("OnDisconnect: " + sess.Token.Token)
+				case util.OnConnect:
+					fmt.Println("OnConnect: " + sess.SessionID)
+				case util.OnDisconnect:
+					fmt.Println("OnDisconnect: " + sess.SessionID)
 				}
 			})
 
 			// Message Handler
-			socket.OnMessage(func(msg ws.Message, sess *simws.SimConnSession) {
-				println(msg.String() + " : " + sess.Token.Token)
+			socket.OnMessage(func(msg ws.Message, client *ws.Client) {
+				fmt.Println(msg.String())
 			})
 		})
 

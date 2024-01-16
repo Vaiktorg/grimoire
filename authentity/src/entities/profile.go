@@ -1,22 +1,22 @@
 package entities
 
 type Address struct {
-	Model
-	Addr1, Addr2         string
-	City, State, Country string
-	Zip                  string
+	Entity
+	Addr1, Addr2         *string
+	City, State, Country *string
+	Zip                  *string
 }
 
-// Profile TODO: Migrate table changes
 type Profile struct {
-	Model
-	FirstName string
-	Initial   string
-	LastName  string
-	LastName2 string
+	Entity
+	FirstName *string
+	Initial   *string
+	LastName  *string
 
-	PhoneNumber string // Unique
+	PhoneNumber *string // Unique
 
 	AddressID string
 	Address   *Address `gorm:"foreignKey:AddressID"`
+
+	ProfilePicture *string
 }

@@ -102,7 +102,7 @@ func (e *Events) Listen(client *ws.Client) {
 
 	for msg := range client.ReaderChan {
 		e.wg.Add(1)
-		go e.procMsg(msg, client)
+		go e.procMsg(&msg, client)
 	}
 
 	// When client closes ReaderChan
@@ -123,7 +123,7 @@ func (e *Events) procMsg(msg *ws.Message, client *ws.Client) {
 	defer e.wg.Done()
 
 	if err := action.Validate(); err != nil {
-		client.Error(msg.KEY, err)
+		client.Error(err)
 	}
 
 	// Automatic Handler

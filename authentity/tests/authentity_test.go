@@ -4,24 +4,33 @@ import (
 	"context"
 	"fmt"
 	"github.com/vaiktorg/grimoire/authentity/src"
-	"github.com/vaiktorg/grimoire/authentity/src/entities"
+	"github.com/vaiktorg/grimoire/authentity/src/models"
 	"github.com/vaiktorg/grimoire/gwt"
-	"gorm.io/driver/sqlite"
+	"github.com/vaiktorg/grimoire/log"
+	"github.com/vaiktorg/grimoire/names"
+	"github.com/vaiktorg/grimoire/uid"
 	"os"
 	"testing"
 )
 
 var (
-	DBName      = "test_db"
-	SQL         = sqlite.Open(DBName)
-	Auth        = src.NewAuthentity("TestAuthentity", SQL)
-	TestProfile = &entities.Profile{
+	Logger     = log.NewSimLogger("Authentity")
+	ServerName = names.NewName() + "_" + string(uid.New())
+	Auth       = src.NewAuthentity(&src.Config{
+		Issuer: ServerName,
+		GSpice: gwt.Spice{
+			Salt:   []byte(uid.New()),
+			Pepper: []byte(uid.New()),
+		},
+		Logger: Logger,
+	})
+	TestProfile = models.Profile{
 		FirstName:   "John",
 		Initial:     "E",
 		LastName:    "Smith",
 		LastName2:   "Johnson",
 		PhoneNumber: "1234567890",
-		Address: &entities.Address{
+		Address: &models.Address{
 			Addr1:   "666 Hellsing Ave.",
 			Addr2:   "Bldg. 3x6 Apt. 543",
 			City:    "Gehenna",
@@ -31,64 +40,43 @@ var (
 		},
 	}
 
-	TestAccount = &entities.Account{
+	TestAccount = models.Account{
 		Username: "nyarlathotep",
 		Email:    "space-worm@elder1s.com",
 		Password: "MrN00dle$123",
 	}
 
-	Token           = gwt.Token{}
-	Context, cancel = context.WithCancel(context.Background())
+	Token = gwt.Token{}
 )
 
 func TestMain(m *testing.M) {
-	defer cancel()
-
 	if Auth == nil {
 		panic("auth is nil")
 	}
 
-	if _, err := os.Stat(DBName); os.IsNotExist(err) {
+	if _, err := os.Stat(ServerName); os.IsNotExist(err) {
 		panic("sql db not created")
 	}
 
 	m.Run()
 }
 
-func TestRegister(t *testing.T) {
-	err := Auth.RegisterIdentity(
-		Context,
-		TestProfile,
-		TestAccount,
-	)
-	var tkn *gwt.GWT[src.AuthBody]
-	if err != nil {
-		tkn, err = Auth.LoginManual(
-			Context,
-			TestAccount.Username,
-			TestAccount.Password,
+func TestAuthentityHappyPath(t *testing.T) {
+	t.Run("TestRegister", func(t *testing.T) {
+		err := Auth.RegisterIdentity(
+			context.Background(),
+			&TestProfile,
+			&TestAccount,
 		)
 		if err != nil {
 			t.Error(err)
 			t.FailNow()
 		}
-	}
+	})
 
-	if tkn == nil {
-		t.Error("token is nil")
-		t.FailNow()
-	}
-
-	Token.Token = tkn.Token.Token
-	Token.Signature = tkn.Token.Signature
-
-	fmt.Println(Token)
-}
-
-func TestLogin(t *testing.T) {
-	if Token.Token == "" {
+	t.Run("TestLogin", func(t *testing.T) {
 		tkn, err := Auth.LoginManual(
-			Context,
+			context.Background(),
 			TestAccount.Username,
 			TestAccount.Password,
 		)
@@ -97,25 +85,23 @@ func TestLogin(t *testing.T) {
 			t.FailNow()
 		}
 
-		Token.Token = tkn.Token.Token
-		Token.Signature = tkn.Token.Signature
-
+		Token.Token = tkn.Token
 		fmt.Println(Token)
-	}
-}
+	})
 
-func TestLoginToken(t *testing.T) {
-	err := Auth.LoginToken(Context, Token.Token)
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-}
+	t.Run("TestLoginToken", func(t *testing.T) {
+		err := Auth.LoginToken(Token.Token)
+		if err != nil {
+			t.Error(err)
+			t.FailNow()
+		}
+	})
 
-func TestLogoutToken(t *testing.T) {
-	err := Auth.LogoutToken(Context, Token.Token)
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
+	t.Run("TestLogoutToken", func(t *testing.T) {
+		err := Auth.LogoutToken(context.Background(), Token.Token)
+		if err != nil {
+			t.Error(err)
+			t.FailNow()
+		}
+	})
 }

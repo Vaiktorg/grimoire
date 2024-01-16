@@ -1,0 +1,66 @@
+:root {
+}
+
+/* 12 Grid ==================================================================================================== */
+/* Grid container */
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr); /* Creates 12 columns */
+    gap: var(--grid-gap); /* Space between grid items */
+}
+
+/* Grid item with fixed column span */
+[class*="col-"] {
+}
+
+/* Flexible grid item */
+.col-grow {
+    grid-column: span 12; /* Take up remaining space */
+    min-width: 0; /* For text wrapping */
+}
+
+/* Generate column span classes */
+.col-1 { grid-column: span 1; }
+.col-2 { grid-column: span 2; }
+.col-3 { grid-column: span 3; }
+.col-4 { grid-column: span 4; }
+.col-5 { grid-column: span 5; }
+.col-6 { grid-column: span 6; }
+.col-7 { grid-column: span 7; }
+.col-8 { grid-column: span 8; }
+.col-9 { grid-column: span 9; }
+.col-10 { grid-column: span 10; }
+.col-11 { grid-column: span 11; }
+.col-12 { grid-column: span 12; }
+
+
+/* Flex Grid ==================================================================================================== */
+/* Grid container */
+.flex-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--grid-gap); /* Space between grid items */
+    margin: calc(-1 * var(--grid-gap)); /* Negative margin for alignment */
+}
+
+/* Grid item */
+.flex-item {
+    flex: 1; /* Each item will grow */
+    min-width: 120px; /* Minimum width of the column, adjust as needed */
+    padding: var(--spacing); /* Adjust the padding to your preference */
+    margin: var(--grid-gap); /* Margin for alignment */
+}
+
+/* Optional fixed width classes */
+.flex-fix-1 { flex: 0 0 8.33%; }
+.flex-fix-2 { flex: 0 0 16.66%; }
+.flex-fix-3 { flex: 0 0 25%; }
+.flex-fix-4 { flex: 0 0 33.33%; }
+.flex-fix-5 { flex: 0 0 41.66%; }
+.flex-fix-6 { flex: 0 0 50%; }
+.flex-fix-7 { flex: 0 0 58.33%; }
+.flex-fix-8 { flex: 0 0 66.66%; }
+.flex-fix-9 { flex: 0 0 75%; }
+.flex-fix-10 { flex: 0 0 88.33%; }
+.flex-fix-11 { flex: 0 0 91.66%; }
+.flex-fix-12 { flex: 0 0 100%; }

@@ -2,10 +2,9 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/vaiktorg/grimoire/authentity/src/entities"
+	"github.com/vaiktorg/grimoire/authentity/src/models"
 	"github.com/vaiktorg/grimoire/authentity/src/repo"
-	"net/http"
 )
 
 type AccountService struct {
@@ -16,54 +15,75 @@ func NewAccountService(accountRepo *repo.AccountRepo) AccountService {
 	return AccountService{Repo: accountRepo}
 }
 
-// AccountsHandler Return profiles
-func AccountsHandler(service *AccountService) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		bks, err := service.AllAccounts(r.Context())
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
+func (a *AccountService) GetAccount(ctx context.Context, username, email string) (*models.Account, error) {
+	acc, err := a.Repo.FindAccount(ctx, username, email)
+	if err != nil {
+		return nil, err
+	}
 
-		err = json.NewEncoder(w).Encode(bks)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-		}
+	return AccountToModel(acc), nil
+}
+func (a *AccountService) FindAccountByUsername(ctx context.Context, username string) (*models.Account, error) {
+	acc, err := a.Repo.FindAccountByUsername(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+
+	return AccountToModel(acc), nil
+}
+func (a *AccountService) AccountHasUsername(ctx context.Context, username string) error {
+	return a.Repo.AccountHasUsername(ctx, username)
+}
+func (a *AccountService) FindAccountByEmail(ctx context.Context, email string) (*models.Account, error) {
+	acc, err := a.Repo.FindAccountByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	return AccountToModel(acc), nil
+}
+func (a *AccountService) AllAccounts(ctx context.Context) ([]models.Account, error) {
+	accounts, err := a.Repo.AllAccounts(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	accountsRet := make([]models.Account, len(accounts))
+	for _, acc := range accounts {
+		accountsRet = append(accountsRet, *AccountToModel(acc))
+	}
+
+	return accountsRet, err
+}
+func (a *AccountService) Updates(ctx context.Context, account *models.Account) error {
+	return a.Repo.Update(ctx, AccountToEntity(account))
+}
+
+func AccountToModel(account *entities.Account) *models.Account {
+	if account == nil {
+		return nil
+	}
+
+	return &models.Account{
+		ID:        account.Entity.ID,
+		Username:  account.Username,
+		Email:     *account.Email,
+		Signature: *account.Signature,
+		Password:  *account.Password,
 	}
 }
-
-func AccountHandler(service *AccountService) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		info := &struct {
-			Username string `json:"username"`
-			Email    string `json:"email"`
-			ID       string `json:"id"`
-		}{}
-
-		err := json.NewDecoder(r.Body).Decode(info)
-		if err != nil {
-			http.Error(w, http.StatusText(500), 500)
-			return
-		}
-
-		account, err := service.GetAccount(r.Context(), info.Username, info.Email)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		err = json.NewEncoder(w).Encode(account)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-		}
+func AccountToEntity(account *models.Account) *entities.Account {
+	if account == nil {
+		return nil
 	}
-}
 
-//==================================
-
-func (a *AccountService) GetAccount(ctx context.Context, username, email string) (*entities.Account, error) {
-	return a.Repo.FindAccount(ctx, username, email)
-}
-func (a *AccountService) AllAccounts(ctx context.Context) ([]*entities.Account, error) {
-	return a.Repo.AllAccounts(ctx)
+	return &entities.Account{
+		Entity: entities.Entity{
+			ID: account.ID,
+		},
+		Username:  account.Username,
+		Email:     &account.Email,
+		Signature: &account.Signature,
+		Password:  &account.Password,
+	}
 }

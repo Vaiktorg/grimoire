@@ -1,35 +1,37 @@
 package main
 
 import (
-	"github.com/vaiktorg/grimoire/authentity/internal"
 	"github.com/vaiktorg/grimoire/authentity/src"
+	"github.com/vaiktorg/grimoire/gwt"
 	"github.com/vaiktorg/grimoire/log"
 	"github.com/vaiktorg/grimoire/serve"
-	"gorm.io/driver/sqlite"
+	"github.com/vaiktorg/grimoire/uid"
 )
 
 func main() {
-	dial := sqlite.Open("testdb.sqlite")
-	AppName := "AuthentityServer"
-
-	logger := log.NewLogger(log.Config{
+	logger := log.NewLogger(&log.Config{
 		CanPrint:    true,
 		CanOutput:   true,
-		Persist:     false,
-		ServiceName: AppName,
+		Persist:     true,
+		ServiceName: "Server",
 	})
 
-	authentityHandler := src.NewAuthentity(AppName, logger.NewServiceLogger(log.Config{
-		CanPrint:    true,
-		CanOutput:   true,
-		Persist:     false,
-		ServiceName: "Authentity",
-	}), dial)
-
 	server := serve.NewServer(&serve.Config{
-		Handler: internal.SecurityMiddleware(authentityHandler),
-		AppName: AppName,
+		AppName: "Server",
 		Logger:  logger,
+		Handler: src.NewAuthentity(&src.Config{
+			Issuer: "Authentity",
+			GSpice: gwt.Spice{
+				Salt:   []byte(uid.New()),
+				Pepper: []byte(uid.New()),
+			},
+			Logger: logger.NewServiceLogger(&log.Config{
+				CanPrint:    true,
+				CanOutput:   true,
+				Persist:     true,
+				ServiceName: "Authentity",
+			}),
+		}),
 	})
 
 	server.ListenAndServe()

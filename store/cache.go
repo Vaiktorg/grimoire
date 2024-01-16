@@ -17,34 +17,35 @@ type Cache[T any] struct {
 	mu sync.Mutex
 
 	appName       string
-	runId         string
+	runId         []byte
 	size          uint64
 	flushTotal    int
 	logFilesPaths map[string][]string //Map [Service_RunID] []Paths
 
 	buff   []T
-	cap    int
-	wPos   int
-	rPos   int
+	cap    int64
+	wPos   int64
+	rPos   int64
 	isFull bool
 }
 
 func NewCache[T any](name string) *Cache[T] {
 	return &Cache[T]{
 		appName:       name,
-		runId:         uid.NewUID(8).String(),
+		runId:         []byte(uid.NewUID(8)),
 		logFilesPaths: make(map[string][]string),
+		buff:          make([]T, CurrentLen),
+		isFull:        false,
 	}
 }
 
-func NewIDCache[T any](cacheName string, runId string) *Cache[T] {
-
+func NewIDCache[T any](cacheName string, runId []byte) *Cache[T] {
 	return &Cache[T]{
 		appName:       cacheName,
 		runId:         runId,
 		logFilesPaths: make(map[string][]string),
-		buff:          make([]T, DefaultLen),
-		cap:           DefaultLen,
+		buff:          make([]T, CurrentLen),
+		cap:           CurrentLen,
 	}
 }
 
@@ -54,7 +55,7 @@ func (c *Cache[T]) Size() int {
 
 	return int(c.size)
 }
-func (c *Cache[T]) Len() int {
+func (c *Cache[T]) Len() int64 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -78,12 +79,14 @@ func (c *Cache[T]) Write(msg T) {
 		fmt.Printf("error marshaling log message: %v", err)
 		return
 	}
+
 	logSize := uint64(len(logBytes))
 
 	c.size += logSize
+	c.cap += int64(cap(logBytes))
 
 	c.buff[c.wPos] = msg
-	c.wPos = (c.wPos + 1) % c.cap
+	c.wPos = (c.wPos + 1) % int64(len(c.buff))
 
 	if c.isFull {
 		c.rPos = (c.rPos + 1) % c.cap
@@ -113,15 +116,15 @@ func (c *Cache[T]) ReadAll(runName string) []T {
 		logs = append(logs, c.buff[:c.wPos]...)
 	}
 
-	buffLen := 0
+	buffLen := int64(0)
 	if c.isFull {
 		buffLen = c.cap // The buffer is full
 	} else {
 		buffLen = (c.wPos - c.rPos + c.cap) % c.cap
 	}
 
-	if c.flushTotal > 0 && buffLen < DefaultLen {
-		key := runName + "_" + c.runId
+	if c.flushTotal > 0 && buffLen < CurrentLen {
+		key := runName + "_" + string(c.runId)
 		logs = append(logs, c.fromFiles(key)...)
 		return logs
 	}
@@ -138,7 +141,7 @@ func (c *Cache[T]) Flush() {
 	}
 
 	date := time.Now().Format("20060102150405")
-	filename := date + "__" + c.appName + "__" + c.runId + "__" + strconv.Itoa(c.flushTotal) + ".log"
+	filename := date + "__" + c.appName + "__" + string(c.runId) + "__" + strconv.Itoa(c.flushTotal) + ".log"
 
 	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -226,7 +229,10 @@ func (c *Cache[T]) readLogFiles() error {
 
 const (
 	DefaultSize = 1 * MB
-	DefaultLen  = 10000
+	MinLen      = 10
+	DefaultLen  = 1000
+	MaxLen      = 10000
+	CurrentLen  = DefaultLen
 )
 
 type Size int

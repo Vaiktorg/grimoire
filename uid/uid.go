@@ -7,8 +7,9 @@ package uid
 //  // 9BZ1sApAX4
 
 import (
+	cr "crypto/rand"
+	"fmt"
 	"math/rand"
-	"sync"
 	"time"
 )
 
@@ -25,7 +26,6 @@ const (
 )
 
 var (
-	mu  sync.Mutex
 	src = rand.NewSource(time.Now().UnixNano())
 )
 
@@ -33,38 +33,30 @@ func init() {
 	src.Seed(time.Now().UnixNano())
 }
 
-type UID string
+type UID []byte
+
+func New() UID {
+	return newBytes(16, AlphaNumeric)
+}
 
 // NewUID takes constant letterBytes and returns random string of length n.
 func NewUID(n int) UID {
-	mu.Lock()
-	defer mu.Unlock()
-
 	return newBytes(n, AlphaNumeric)
 }
+func NewSecureUID(n int) (UID, error) {
+	// Create a byte slice of the desired length
+	randomBytes := make([]byte, n)
 
-func NewUIDStr(n int) UID {
-	mu.Lock()
-	defer mu.Unlock()
+	_, err := cr.Read(randomBytes)
+	if err != nil {
+		return UID(""), err
+	}
 
-	return newBytes(n, AlphaNumeric)
+	// Convert to a base64 URL-safe string
+	return []byte(fmt.Sprintf("%X", randomBytes[:n])), nil
 }
-
 func NewUIDSrc(n int, set string) UID {
-	mu.Lock()
-	defer mu.Unlock()
-
-	return newBytes(n, set)
-}
-
-func (b UID) Bytes() []byte {
-	return []byte(b)
-}
-func (b UID) String() string {
-	return string(b)
-}
-func (b UID) Len() int {
-	return len(b)
+	return newBytes(n*2, set)
 }
 
 // NewBytes takes letterBytes from parameters and returns random string of length n.

@@ -1,14 +1,14 @@
 package entities
 
 import (
-	"github.com/google/uuid"
+	"github.com/vaiktorg/grimoire/uid"
 	"time"
 )
 
 type UserActivityLog struct {
-	Model
+	Entity
 
-	IdentityId uuid.UUID
+	IdentityId uid.UID   `gorm:"index"`
 	Identity   *Identity `gorm:"foreignKey:IdentityId"`
 
 	LoggedIn  time.Time

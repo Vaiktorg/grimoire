@@ -58,15 +58,23 @@ func (r *Repo[K, V]) With(k K, h func(V) error) error {
 }
 func (r *Repo[K, V]) Iterate(h func(K, V)) {
 	r.mu.Lock()
-	var opQueue []func()
+
+	opQueue := make([]func(), len(r.col))
+	idx := 0
 	for k, v := range r.col {
-		opQueue = append(opQueue, func() { h(k, v) })
+		kk, vv := k, v
+		opQueue[idx] = func() {
+			h(kk, vv)
+		}
+		idx++
 	}
+
 	r.mu.Unlock()
 
 	for _, op := range opQueue {
 		op()
 	}
+
 	opQueue = nil // Clear operation queue
 }
 

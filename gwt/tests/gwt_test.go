@@ -2,47 +2,48 @@ package tests
 
 import (
 	"bytes"
-	"github.com/vaiktorg/grimoire/authentity/src"
 	"github.com/vaiktorg/grimoire/gwt"
-	"log"
+	"github.com/vaiktorg/grimoire/uid"
 	"testing"
 	"time"
 )
 
+var mc, err = gwt.NewMultiCoder[*gwt.Resources](spice)
+
 func TestMain(m *testing.M) {
 	defer m.Run()
+	if err != nil {
+		panic(err)
+	}
 }
 
-var TestAccount = gwt.GWT[src.AuthBody]{
+var TestAccount = &gwt.GWT[*gwt.Resources]{
 	Header: gwt.Header{
-		Issuer:    "Authentity",
-		Recipient: "Vaiktorg",
-		Expires:   time.Now(),
+		Issuer:    []byte("Authentity"),
+		Recipient: []byte("Vaiktorg"),
+		Expires:   time.Now().Add(gwt.TokenExpireTime),
 	},
-	Body: src.AuthBody{
-		Permission: 0,
-	},
+	Body: gwt.NewResources(uid.NewUID(gwt.FixedIDLen)),
+}
+
+var spice = gwt.Spice{
+	Salt:   []byte("salt"),
+	Pepper: []byte("pepper"),
 }
 
 func TestEncodeGWT(t *testing.T) {
-	enc := gwt.NewEncoder[*gwt.GWT[src.AuthBody]](gwt.Spice{
-		Salt:   []byte("salt"),
-		Pepper: []byte("pepper"),
-	})
-
-	token, err := enc.Encode(&TestAccount)
+	token, err := mc.Encode(TestAccount)
 	if token.Token == "" {
 		t.Errorf("token string is empty")
 		t.FailNow()
 	}
 
-	if token.Signature == nil {
+	if token.Signature == "" {
 		t.Errorf("token signature is empty")
 		t.FailNow()
 	}
 
-	TestAccount.Token.Token = token.Token
-	TestAccount.Token.Signature = token.Signature
+	TestAccount.Token = token.Token
 
 	t.Logf("%+v", token)
 
@@ -50,51 +51,31 @@ func TestEncodeGWT(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 }
-
 func TestDecodeGWT(t *testing.T) {
-	spice := gwt.Spice{
-		Salt:   []byte("salt"),
-		Pepper: []byte("pepper"),
-	}
-
-	dec := gwt.NewDecoder[*gwt.GWT[src.AuthBody]](spice)
-
-	if TestAccount.Token.Token == "" {
+	if TestAccount.Token == "" {
 		t.Errorf("token string is empty")
 		t.FailNow()
 	}
 
-	token, err := dec.Decode(TestAccount.Token.Token)
-	if err = token.ValidateGWT(nil); err != nil {
+	token, err := mc.Decode(TestAccount.Token)
+	if err = token.ValidateGWT(spice); err != nil {
 		t.Errorf(err.Error())
 		t.FailNow()
 	}
 
-	if !bytes.Equal(token.Token.Signature, TestAccount.Token.Signature) {
-		t.Error("non matching signatures")
-		return
-	}
-
-	if token.Header.Recipient != TestAccount.Header.Recipient {
+	if !bytes.Equal(token.Header.Recipient, TestAccount.Header.Recipient) {
 		t.Errorf("mismatch recipient")
 	}
 	if token.Header.Expires.Compare(TestAccount.Header.Expires) != 0 {
 		t.Errorf("mismatch expire date")
 	}
 
-	if token.Header.Issuer != TestAccount.Header.Issuer {
+	if !bytes.Equal(token.Header.Issuer, TestAccount.Header.Issuer) {
 		t.Errorf("mismatch issuer")
 	}
-	if token.Token.Token != TestAccount.Token.Token {
-		t.Errorf("mismatch token.token")
+	if token.Token != TestAccount.Token {
+		t.Errorf("mismatch token")
 	}
-
-	if !bytes.Equal(token.Token.Signature, TestAccount.Token.Signature) {
-		t.Errorf("mismatch token.signature")
-		t.FailNow()
-	}
-
-	log.Printf("%+v", token)
 
 	if err != nil {
 		t.Errorf(err.Error())

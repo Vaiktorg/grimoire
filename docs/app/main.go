@@ -11,7 +11,7 @@ func main() {
 
 	wiki := docs.NewWiki(docs.Config{
 		Project:  "GBNCX",
-		Desc:     "Smart Model Rocket.",
+		Desc:     "Smart Entity Rocket.",
 		DocsPath: "docs/wiki",
 	})
 

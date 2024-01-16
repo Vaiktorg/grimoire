@@ -13,17 +13,17 @@ var defaultConfig *Config
 const defaultAppNameLen = 16
 
 func init() {
-	appName := uid.NewUID(defaultAppNameLen).String()
+	appName := uid.NewUID(defaultAppNameLen)
 
 	defaultConfig = &Config{
 		Handler: http.NewServeMux(),
-		AppName: appName,
+		AppName: string(appName),
 		Addr:    ":8080",
-		Logger: log.NewLogger(log.Config{
+		Logger: log.NewLogger(&log.Config{
 			CanPrint:    true,
 			CanOutput:   true,
-			Persist:     false,
-			ServiceName: appName,
+			Persist:     true,
+			ServiceName: string(appName),
 		}),
 	}
 }
@@ -56,12 +56,8 @@ func (c *Config) GetTLSConfig() *TLSConfig {
 
 func (c *Config) GetLoggerConfig() log.ILogger {
 	if c.Logger == nil {
-		return log.NewLogger(log.Config{
-			CanOutput:   true,
-			CanPrint:    true,
-			Persist:     false,
-			ServiceName: c.AppName,
-		})
+		l := log.NewStdOutLogger(c.AppName)
+		return l
 	}
 
 	return c.Logger
@@ -69,7 +65,7 @@ func (c *Config) GetLoggerConfig() log.ILogger {
 
 func (c *Config) GetAppName() string {
 	if c.AppName == "" {
-		c.AppName = uid.NewUID(16).String()
+		c.AppName = string(uid.NewUID(16))
 	}
 
 	return c.AppName

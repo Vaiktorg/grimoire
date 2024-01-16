@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -35,7 +36,7 @@ func ConsoleCloser(appName string, execFunc func(), disposeFunc func()) {
 func ServerCloser(server *http.Server) {
 	go func() {
 		err := server.ListenAndServe()
-		if err == os.ErrClosed {
+		if errors.Is(err, os.ErrClosed) {
 			fmt.Println(err)
 		}
 	}()

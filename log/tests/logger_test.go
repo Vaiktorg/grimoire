@@ -3,6 +3,7 @@ package tests
 import (
 	"errors"
 	"github.com/vaiktorg/grimoire/log"
+	"github.com/vaiktorg/grimoire/store"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -14,7 +15,7 @@ import (
 )
 
 const (
-	totalLogAmount = 10000
+	totalLogAmount = store.CurrentLen
 	sleepTime      = 10 * time.Millisecond
 )
 
@@ -25,10 +26,10 @@ func TestMain(m *testing.M) {
 func TestLoggingCaching(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	logger := log.NewLogger(log.Config{ServiceName: "TestLogger", CanOutput: true})
+	logger := log.NewLogger(&log.Config{ServiceName: "TestLogger", CanOutput: true, Persist: true})
 	defer logger.Close()
 
-	servLogger := logger.NewServiceLogger(log.Config{ServiceName: "TestLoggerService", CanOutput: true})
+	servLogger := logger.NewServiceLogger(&log.Config{ServiceName: "TestLoggerService", CanOutput: true, Persist: true})
 
 	t.Run("ServiceLogger", func(t *testing.T) {
 		// Number of messages to test caching with.
@@ -37,13 +38,16 @@ func TestLoggingCaching(t *testing.T) {
 
 		wg := new(sync.WaitGroup)
 		wg.Add(numMessages)
-		go servLogger.Output(func(l log.Log) {
-			if l.Service == "TestLoggerService" {
+
+		go servLogger.Output(func(l log.Log) error {
+			if l.Service == servLogger.ServiceName() {
 				defer wg.Done()
 				atomic.AddUint64(&receivedMessages, 1)
 			} else if l.Service == "TestLogger" {
-				t.Errorf("service logger should not receive from main logger")
+				return errors.New("service logger should not receive from main logger")
 			}
+
+			return nil
 		})
 
 		// Send multiple log messages.
@@ -60,7 +64,7 @@ func TestLoggingCaching(t *testing.T) {
 				case 3:
 					servLogger.WARN("test WARN message")
 				case 4:
-					servLogger.ERROR(errors.New("test ERROR message"))
+					servLogger.ERROR("test ERROR message")
 				}
 			}(i)
 		}
@@ -96,9 +100,11 @@ func TestLoggingCaching(t *testing.T) {
 		receivedMessages := uint64(0)
 
 		wg := new(sync.WaitGroup)
-		go logger.Output(func(l log.Log) {
+		go logger.Output(func(l log.Log) error {
 			defer wg.Done()
 			atomic.AddUint64(&receivedMessages, 1)
+
+			return nil
 		})
 
 		wg.Add(numMessages * 2)
@@ -116,7 +122,7 @@ func TestLoggingCaching(t *testing.T) {
 				case 3:
 					logger.WARN("test WARN message")
 				case 4:
-					logger.ERROR(errors.New("test ERROR message"))
+					logger.ERROR("test ERROR message")
 				}
 			}(i)
 		}
@@ -127,12 +133,12 @@ func TestLoggingCaching(t *testing.T) {
 		// Retrieve the cached messages.
 		messages := logger.Messages(log.Pagination{
 			Page:   1,
-			Amount: int(receivedMessages),
+			Amount: numMessages,
 		})
 
 		// Check if the messages have been cached.
-		if int(receivedMessages) != numMessages*2 {
-			t.Errorf("Expected %d cached messages, found %d", numMessages*2, receivedMessages)
+		if int(receivedMessages/2) != numMessages {
+			t.Errorf("Expected %d cached messages, found %d", numMessages, receivedMessages/2)
 			return
 		}
 

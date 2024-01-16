@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/vaiktorg/grimoire/store"
 	"github.com/vaiktorg/grimoire/uid"
+	"os"
 	"sync/atomic"
 	"time"
 )
@@ -11,29 +12,30 @@ import (
 type SimLogger struct {
 	Service   string
 	Cache     *store.Cache[Log] // Assuming a simpler cache implementation.
-	totalSent uint64
+	totalSent *uint64
 	Level     Level
 	outChan   chan Log
-	services  store.Repo[string, ILogger]
+	services  *store.Repo[string, ILogger]
 }
 
-func NewSimLogger(service string, level Level) *SimLogger {
+func NewSimLogger(service string) *SimLogger {
+	totalSent := uint64(0)
 	return &SimLogger{
 		Service:   service,
 		Cache:     store.NewCache[Log](service), // Assuming a simpler cache implementation.
-		Level:     level,
-		outChan:   make(chan Log, 100), // Adjust buffer size as needed.
-		totalSent: 0,
+		outChan:   make(chan Log, 100),          // Adjust buffer size as needed.
+		totalSent: &totalSent,
 	}
 }
 
-func (l *SimLogger) NewServiceLogger(config Config) ILogger {
+func (l *SimLogger) NewServiceLogger(config *Config) ILogger {
 	return &SimLogger{
 		Service:   config.ServiceName,
 		Cache:     l.Cache,
 		totalSent: l.totalSent,
 		Level:     l.Level,
 		outChan:   l.outChan,
+		services:  store.NewRepo[string, ILogger](),
 	}
 }
 
@@ -42,9 +44,9 @@ func (l *SimLogger) ServiceName() string {
 }
 
 func (l *SimLogger) Messages(pagination Pagination) []Log {
-	start := (pagination.Page - 1) * pagination.Amount
-	end := start + pagination.Amount
-	total := l.Cache.FlushLen()*store.DefaultLen + l.Cache.Len()
+	start := int64((pagination.Page - 1) * pagination.Amount)
+	end := start + int64(pagination.Amount)
+	total := int64(l.Cache.FlushLen()*store.CurrentLen) + l.Cache.Len()
 
 	if end > total {
 		end = total
@@ -58,13 +60,15 @@ func (l *SimLogger) Messages(pagination Pagination) []Log {
 }
 
 func (l *SimLogger) Services() map[string]ILogger {
-	//TODO implement me
 	return l.services.All()
 }
 
-func (l *SimLogger) Output(f func(log Log)) {
+func (l *SimLogger) Output(f func(log Log) error) {
 	for log := range l.outChan {
-		f(log)
+		if err := f(log); err != nil {
+			_ = l.ERROR(err.Error())
+			return
+		}
 	}
 }
 
@@ -82,14 +86,16 @@ func (l *SimLogger) Log(level Level, msg string, data ...any) {
 	}
 
 	log := Log{
-		ID:        atomic.AddUint64(&l.totalSent, 1),
-		SourceId:  uid.NewUID(8).String(), // Assuming a simpler UID generation function.
+		ID:        atomic.AddUint64(l.totalSent, 1),
+		SourceId:  []byte(uid.NewUID(8)), // Assuming a simpler UID generation function.
 		Timestamp: time.Now().Format(time.RFC3339),
 		Level:     level.String(),
 		Service:   l.Service,
 		Msg:       msg,
 		Data:      data,
 	}
+
+	_, _ = os.Stdout.WriteString(log.String() + "\n")
 
 	l.Cache.Write(log) // Assuming a simpler cache implementation.
 	l.outChan <- log
@@ -99,13 +105,24 @@ func (l *SimLogger) TRACE(info string, obj ...any) { l.Log(LevelTrace, info, obj
 func (l *SimLogger) INFO(info string, obj ...any)  { l.Log(LevelInfo, info, obj...) }
 func (l *SimLogger) DEBUG(info string, obj ...any) { l.Log(LevelDebug, info, obj...) }
 func (l *SimLogger) WARN(info string, obj ...any)  { l.Log(LevelWarn, info, obj...) }
-func (l *SimLogger) ERROR(info string, obj ...any) { l.Log(LevelError, info, obj...) }
-func (l *SimLogger) FATAL(info string)             { l.Log(LevelFatal, info) }
+func (l *SimLogger) ERROR(err string, obj ...any) string {
+	l.Log(LevelError, err, obj...)
+	return err
+}
+func (l *SimLogger) FATAL(info string) { l.Log(LevelFatal, info) }
 
 func (l *SimLogger) TotalSent() uint64 {
-	return atomic.LoadUint64(&l.totalSent)
+	return atomic.LoadUint64(l.totalSent)
 }
-
+func (l *SimLogger) BatchLogs(logs ...Log) {
+	for _, log := range logs {
+		l.Log(LevelFromString(log.Level), log.Msg, log.Data)
+	}
+}
 func (l *SimLogger) Close() {
+	l.services.Iterate(func(s string, logger ILogger) {
+		logger.Close()
+		l.services.Delete(s)
+	})
 	close(l.outChan)
 }

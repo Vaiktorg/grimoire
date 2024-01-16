@@ -14,5 +14,5 @@
 {{end}}
 
 {{- /*gotype: src.Log */ -}}
-{{define "src-card"}}{{range $_, $v := .}}<tr><td>{{$v.ID}}</td><td class="{{$v.Level | lower}}"><details class="logMsg"><summary class="Header"><strong>{{$v.Level}} --> {{if .Service}}{{$v.Service}}{{else}}{{$v.Msg}}{{end}}</strong></summary><hr /><div class="log-container"><div class="description"><h3>Description</h3><p>{{$v.Msg}}</p></div><div class="body"><h3>Body</h3><pre>{{$v.Data}}</pre></div></div></details></td><td>{{$v.Timestamp}}</td></tr>{{end}}{{end}}
+{{define "src-card"}}<tr><td>{{.ID}}</td><td class="{{.Level | lower}}"><details class="logMsg"><summary class="Header"><strong>{{.Level}} --> {{if .Service}}{{.Service}}{{else}}{{.Msg}}{{end}}</strong></summary><hr /><div class="log-container"><div class="description"><h3>Description</h3><p>{{.Msg}}</p></div><div class="body"><h3>Body</h3><pre>{{.Data}}</pre></div></div></details></td><td>{{.Timestamp}}</td></tr>{{end}}
 

@@ -2,7 +2,9 @@ package ws
 
 import (
 	"context"
+	"github.com/vaiktorg/grimoire/serve/simws"
 	"github.com/vaiktorg/grimoire/uid"
+	"github.com/vaiktorg/grimoire/util"
 	"nhooyr.io/websocket"
 	"sync"
 	"sync/atomic"
@@ -26,27 +28,38 @@ type Client struct {
 
 	WriterChan chan Message
 	ReaderChan chan Message
+	multiCoder *util.MultiCoder[Message]
 
-	wgHandler    sync.WaitGroup
-	onConnect    []func(IClient)
-	onDisconnect []func(IClient)
+	wgHandler sync.WaitGroup
+
+	hooks util.Hooks[*Client]
 }
 
-func NewClient(conn *websocket.Conn) *Client {
-	id := uid.NewUID(8)
+func NewClient(conn *websocket.Conn) (*Client, error) {
+	id, err := uid.NewSecureUID(simws.TokenLen)
+	if err != nil {
+		return nil, err
+	}
+
+	mc, err := util.NewMultiCoder[Message]()
+	if err != nil {
+		return nil, err
+	}
+
 	client := &Client{
 		conn:       conn,
 		id:         id,
 		WriterChan: make(chan Message, 100),
 		ReaderChan: make(chan Message, 100),
+		multiCoder: mc,
 	}
 
-	client.execOnConnect()
+	client.hooks.EnqueueHook(util.OnConnect)
 
 	go client.listenIncoming()
 	go client.listenOutgoing()
 
-	return client
+	return client, nil
 }
 
 func (c *Client) ID() uid.UID {
@@ -81,22 +94,6 @@ func (c *Client) Error(err error) {
 	c.WriterChan <- msg
 }
 
-// OnConnect appends a handler that will be called at the end of the Client's connection sequence.
-func (c *Client) OnConnect(handler ...func(client IClient)) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.onConnect = append(c.onConnect, handler...)
-}
-
-// OnDisconnect appends a handler that will be called at the end of the Client's disconnection sequence.
-func (c *Client) OnDisconnect(handler ...func(client IClient)) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.onDisconnect = append(c.onDisconnect, handler...)
-}
-
 func (c *Client) Close() {
 	if c.closed.Load() {
 		return
@@ -109,7 +106,7 @@ func (c *Client) Close() {
 
 	println("disconnecting")
 
-	c.execOnDisconnect()
+	c.hooks.EnqueueHook(util.OnDisconnect)
 
 	_ = c.conn.Close(websocket.StatusNormalClosure, "bye bye")
 
@@ -117,24 +114,6 @@ func (c *Client) Close() {
 	close(c.ReaderChan)
 
 	println("closed and disconnected")
-}
-
-func (c *Client) execOnConnect() {
-	c.wgHandler.Add(len(c.onConnect))
-	for _, f := range c.onConnect {
-		go func(hf func(client IClient), wg *sync.WaitGroup) { hf(c); wg.Done() }(f, &c.wgHandler)
-	}
-
-	c.wgHandler.Wait()
-}
-
-func (c *Client) execOnDisconnect() {
-	c.wgHandler.Add(len(c.onDisconnect))
-	for _, f := range c.onDisconnect {
-		go func(hf func(client IClient), wg *sync.WaitGroup) { hf(c); wg.Done() }(f, &c.wgHandler)
-	}
-
-	c.wgHandler.Wait()
 }
 
 func (c *Client) listenIncoming() {
@@ -145,8 +124,7 @@ func (c *Client) listenIncoming() {
 			return
 		}
 
-		var msg Message
-		err = msg.Decode(JSON, buf)
+		msg, err := c.multiCoder.DecodeDecrypt(buf, util.DecodeGob)
 		if err != nil {
 			continue
 		}
@@ -156,12 +134,12 @@ func (c *Client) listenIncoming() {
 }
 func (c *Client) listenOutgoing() {
 	for msg := range c.WriterChan {
-		buf, err := msg.Encode(JSON)
+		buf, err := c.multiCoder.EncodeEncrypt(msg, util.EncodeGob)
 		if err != nil {
 			continue
 		}
 
-		if err = c.conn.Write(context.Background(), websocket.MessageText, buf); err != nil {
+		if err = c.conn.Write(context.Background(), websocket.MessageType(msg.TYPE), buf); err != nil {
 			continue
 		}
 	}

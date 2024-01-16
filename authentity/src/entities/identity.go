@@ -1,24 +1,15 @@
 package entities
 
-import (
-	"github.com/google/uuid"
-	"github.com/vaiktorg/grimoire/bitflag"
-)
-
 type Identity struct {
-	Model
+	Entity
 
-	ProfileID uuid.UUID // Unique
-	Profile   *Profile  `gorm:"foreignKey:ProfileID"`
+	ProfileID string   // Unique
+	Profile   *Profile `gorm:"foreignKey:ProfileID"`
 
 	AccountID string
 	Account   *Account `gorm:"foreignKey:AccountID"`
 
-	GroupsID string
-	Groups   bitflag.Bit `gorm:"foreignKey:GroupsID"`
+	//Devices *Device
 
-	PermissionsID string
-	Permissions   bitflag.Bit `gorm:"foreignKey:PermissionsID"`
-
-	Signature []byte
+	Resources *string
 }

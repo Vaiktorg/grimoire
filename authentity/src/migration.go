@@ -11,15 +11,18 @@ var (
 )
 
 func (a *Authentity) Migrate() error {
-	if a.Provider.db.Migrator().HasTable(entities.Identity{}) {
+	if a.provider.migrator.HasTable(entities.Identity{}) {
 		return AlreadyExistError
 	}
 
-	return a.Provider.db.Transaction(func(tx *gorm.DB) error {
-		return tx.AutoMigrate(
-			&entities.Identity{},
-			&entities.UserActivityLog{})
-	})
+	return a.provider.migrator.AutoMigrate(
+		&entities.Identity{
+			Entity:  entities.Entity{},
+			Profile: &entities.Profile{},
+			Account: &entities.Account{},
+		},
+		&entities.UserActivityLog{},
+	)
 }
 
 func (a *Authentity) Drop(db *gorm.DB) error {

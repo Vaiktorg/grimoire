@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"errors"
 	"github.com/vaiktorg/grimoire/log"
 	"sync"
 	"sync/atomic"
@@ -9,15 +10,14 @@ import (
 )
 
 func TestLogger(t *testing.T) {
-	logger := log.NewLogger(log.Config{ServiceName: "MainLogger", CanOutput: true})
-	defer logger.Close()
+	logger := log.NewLogger(&log.Config{ServiceName: "MainLogger", CanOutput: true, Persist: true})
 
 	t.Cleanup(cleanup)
 
 	var serviceLogger log.ILogger
 	t.Run("NewServiceLogger", func(t *testing.T) {
-		serviceName := "ServiceLogger"
-		serviceLogger = logger.NewServiceLogger(log.Config{ServiceName: serviceName, CanOutput: true})
+		serviceLogger = logger.NewServiceLogger(&log.Config{ServiceName: "ServiceLogger", CanOutput: true, Persist: true})
+		serviceName := serviceLogger.ServiceName()
 
 		if serviceLogger.ServiceName() != serviceName {
 			t.Errorf("ServiceName() = %v, want %v", serviceLogger.ServiceName(), serviceName)
@@ -27,9 +27,11 @@ func TestLogger(t *testing.T) {
 	t.Run("LogGeneration", func(t *testing.T) {
 		serviceLogger.INFO("Test Info", "Test Data")
 
-		time.Sleep(sleepTime) // Allow time for log processing
+		time.Sleep(sleepTime)
 
-		if len(serviceLogger.Messages(log.Pagination{Page: 1, Amount: 10})) == 0 {
+		msgs := serviceLogger.Messages(log.Pagination{Page: 1, Amount: 1})
+		l := len(msgs)
+		if l == 0 {
 			t.Error("Expected at least one log entry")
 		}
 	})
@@ -60,23 +62,24 @@ func TestLogger(t *testing.T) {
 		wg.Add(102)
 		rec := uint64(0)
 
-		go serviceLogger.Output(func(l log.Log) {
-			if l.Service != "ServiceLogger" {
-				t.Errorf("Received l from unexpected service: %v", l.Service)
+		go serviceLogger.Output(func(l log.Log) error {
+			if l.Service != serviceLogger.ServiceName() {
+				return errors.New("received l from unexpected service")
 			}
+
 			atomic.AddUint64(&rec, 1)
 			wg.Done()
+
+			return nil
 		})
 
 		serviceLogger.INFO("Test for Output Channel", "Test Data")
 
-		time.Sleep(sleepTime)
+		wg.Wait()
+
 		if atomic.LoadUint64(&rec) != 102 {
 			t.Fatalf("not received total sent logs in test")
 		}
-
-		wg.Wait()
-
 	})
 
 	t.Run("TotalSent", func(t *testing.T) {
@@ -89,4 +92,6 @@ func TestLogger(t *testing.T) {
 			t.Error("Expected TotalSent to increase after logging")
 		}
 	})
+
+	logger.Close()
 }

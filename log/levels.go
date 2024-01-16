@@ -15,12 +15,17 @@ type Level uint8
 const (
 	LevelNull  Level = iota // ∅	- disable line
 	LevelTrace              // trace - white
-	LevelDebug              // _	- grey
+	LevelDebug              // debug	- grey
 	LevelInfo               // info	- blue
 	LevelWarn               // warn	- orange
 	LevelError              // error	- red
 	LevelFatal              // fatal	- black
 )
+
+func LevelFromString(str string) Level {
+	lvl := LevelNull
+	return lvl.Level(str)
+}
 
 func (l *Level) Set(flag Level)      { *l = *l | flag }
 func (l *Level) Clear(flag Level)    { *l = *l &^ flag }

@@ -30,7 +30,7 @@ func main() {
 	certTemplate := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{"Your Organization"},
+			Organization: []string{"GBNCX_LLC"},
 		},
 		NotBefore: notBefore,
 		NotAfter:  notAfter,

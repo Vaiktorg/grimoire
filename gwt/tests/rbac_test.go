@@ -1,0 +1,35 @@
+package tests
+
+import (
+	"github.com/vaiktorg/grimoire/gwt"
+	"github.com/vaiktorg/grimoire/uid"
+	"reflect"
+	"testing"
+)
+
+func TestSerializationDeserialization(t *testing.T) {
+	original := gwt.NewResources(uid.NewUID(gwt.FixedIDLen))
+
+	res1 := gwt.NewResource(gwt.NetworkDatabaseAPI, gwt.DefaultRoles[gwt.Dev])
+	original.AddResource(res1)
+
+	res2 := gwt.NewResource(gwt.DevToolsCICD, gwt.DefaultRoles[gwt.Dev])
+	original.AddResource(res2)
+
+	// Serialize
+	serialized := original.Serialize()
+
+	// Deserialize
+	resources := &gwt.Resources{}
+	err = resources.Deserialize(serialized)
+	if err != nil {
+		t.Fatalf("Deserialization failed: %v", err)
+		return
+	}
+
+	// Compare original and deserialized
+	if !reflect.DeepEqual(original.Serialize(), resources.Serialize()) {
+		t.Errorf("Original: %+v\nDeserialized: %+v\n", original, resources)
+		return
+	}
+}

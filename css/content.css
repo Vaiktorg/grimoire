@@ -1,0 +1,145 @@
+img {
+    width: 100%;
+    display: block;
+    height: auto;
+}
+
+/* Lists ---------------------------------------------------------------------------------------------------- */
+ul {
+    padding: 0 0 0 calc(var(--spacing) * 4);
+    margin: 0;
+}
+ul > li {
+    margin: 8px 0;
+}
+ul >li > a{
+    color: black;
+    text-decoration: none;
+}
+ul >li >a:hover {
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+/* Text ---------------------------------------------------------------------------------------------------- */
+
+h1,h2,h3,h4,h5,h6 {
+    font-family: monospace;
+}
+h1{
+    margin: 0;
+}
+h2,h3,h4{
+    margin: calc(var(--spacing) * 4) 0 0 0;
+}
+h5,h6 {margin: 16px 0 0 16px}
+
+p , li > p, li, li>a {font-size: small}
+h1 {font-size: 2em;}
+h2 {font-size: 1.4em;}
+h3 {font-size: 1.2em;}
+h4 {font-size: 1em;}
+h5 {font-size: 1em; color: #666666}
+
+
+
+/* Article ---------------------------------------------------------------------------------------------------- */
+article {
+    background-color: #ffffffbb;
+    padding: 0 25% 0 25%;
+}
+
+
+/* Pre & Code ---------------------------------------------------------------------------------------------------- */
+pre {
+    padding: 16px;
+    background: #eee;
+    border: dashed 1px #ccc;
+}
+
+code{}
+
+
+/* Table ---------------------------------------------------------------------------------------------------- */
+table{
+    /*Top, Right, Bottom, Left*/
+    margin: calc(var(--spacing) * 4) 0 0 0;
+    width: 100%;
+    border-collapse: collapse;
+}
+thead {
+    background: black;
+    color: white;
+}
+tbody{
+    border: 1px dashed black;
+}
+tr {
+    border-bottom: 1px dashed black;
+}
+th,td {
+    /*Top, Right, Bottom, Left*/
+    padding: 4px 4px 4px 4px;
+}
+
+
+/* Styling for inline elements like checkbox and radio */
+.inline {
+    display: inline-block; /* Use flexbox for inline elements */
+
+}
+
+/* Print ==================================================================================================== */
+
+@page {
+    size: A4;
+    margin: 30mm 30mm 30mm 30mm;
+}
+
+@media print
+{
+    body {
+        display: table;
+        padding: 0;
+        margin: 0;
+    }
+
+    article {
+        padding: 0;
+    }
+
+    a, a * {
+        display: none !important;
+    }
+
+    nav, nav > * {
+        display: none!important;
+    }
+
+    hr {display: none;}
+
+    h1 {
+        margin: 0;
+        padding: 0;
+        page-break-before: always;
+    }
+
+    h1, h2, h3, h4, h5 {
+        page-break-after: avoid;
+    }
+
+    body > details {
+        display: none!important;
+    }
+
+    table, figure {
+        page-break-inside: avoid;
+    }
+
+    footer {position: fixed; bottom: 0}
+
+    #pageNumber:after {
+        content: counter(page);
+        counter-increment: page;
+    }
+}

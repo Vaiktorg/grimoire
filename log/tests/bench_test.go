@@ -9,7 +9,7 @@ func BenchmarkLogger(b *testing.B) {
 	b.Cleanup(cleanup)
 
 	b.Run("BenchmarkLogCreation", func(b *testing.B) {
-		logger := log.NewLogger(log.Config{ServiceName: "MainService"})
+		logger := log.NewLogger(&log.Config{ServiceName: "MainService", Persist: true})
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -19,10 +19,10 @@ func BenchmarkLogger(b *testing.B) {
 		logger.Close()
 	})
 	b.Run("BenchmarkChannelCommunication", func(b *testing.B) {
-		mainLogger := log.NewLogger(log.Config{ServiceName: "MainService"})
+		mainLogger := log.NewLogger(&log.Config{ServiceName: "MainService", Persist: true})
 		defer mainLogger.Close()
 
-		serviceLogger := mainLogger.NewServiceLogger(log.Config{ServiceName: "ServiceLogger"})
+		serviceLogger := mainLogger.NewServiceLogger(&log.Config{ServiceName: "ServiceLogger", Persist: true})
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -30,7 +30,7 @@ func BenchmarkLogger(b *testing.B) {
 		}
 	})
 	b.Run("BenchmarkConcurrentLogging", func(b *testing.B) {
-		logger := log.NewLogger(log.Config{ServiceName: "MainService"})
+		logger := log.NewLogger(&log.Config{ServiceName: "MainService", Persist: true})
 		defer logger.Close()
 
 		b.ResetTimer()
@@ -42,10 +42,10 @@ func BenchmarkLogger(b *testing.B) {
 	})
 
 	b.Run("BenchmarkConcurrentServiceLogging", func(b *testing.B) {
-		mainLogger := log.NewLogger(log.Config{ServiceName: "MainService"})
+		mainLogger := log.NewLogger(&log.Config{ServiceName: "MainService", Persist: true})
 		defer mainLogger.Close()
 
-		serviceLogger := mainLogger.NewServiceLogger(log.Config{ServiceName: "ServiceLogger"})
+		serviceLogger := mainLogger.NewServiceLogger(&log.Config{ServiceName: "ServiceLogger", Persist: true})
 
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {

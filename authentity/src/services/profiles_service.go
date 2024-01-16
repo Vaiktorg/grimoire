@@ -2,11 +2,11 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"github.com/vaiktorg/grimoire/authentity/src/entities"
+	"github.com/vaiktorg/grimoire/authentity/src/models"
 	"github.com/vaiktorg/grimoire/authentity/src/repo"
-	"net/http"
+	"github.com/vaiktorg/grimoire/uid"
 )
 
 type ProfileService struct {
@@ -19,55 +19,13 @@ func NewProfileService(profileRepo *repo.ProfileRepo) ProfileService {
 	}
 }
 
-// ProfilesHandler Return profiles
-func ProfilesHandler(service *ProfileService) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Pass the request context onto the database layer.
-		bks, err := service.AllProfiles(r.Context())
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		err = json.NewEncoder(w).Encode(bks)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-		}
-	}
-}
-
-func ProfileHandler(service *ProfileService) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Pass the request context onto the database layer.
-		id := r.URL.Query().Get("id")
-
-		if id == "" {
-			http.Error(w, "id not provided", http.StatusInternalServerError)
-			return
-		}
-
-		bks, err := service.FetchProfile(r.Context(), id)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		err = json.NewEncoder(w).Encode(bks)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-		}
-	}
-}
-
-//==================================
-
-func (p *ProfileService) FetchProfile(ctx context.Context, id string) (*entities.Profile, error) {
+func (p *ProfileService) FetchProfile(ctx context.Context, id uid.UID) (*entities.Profile, error) {
 	// Retrieve the connection pool from the context. Because the
 	// r.Context().Value() method always returns an interface{} type, we
 	// need to type assert it into a *sql.DB before using it.
 
-	prof := p.Repo.GetProfile(ctx, id)
-	if prof == nil {
+	prof, err := p.Repo.GetProfile(ctx, id)
+	if err != nil {
 		return nil, errors.New("no profile found")
 	}
 
@@ -78,10 +36,40 @@ func (p *ProfileService) AllProfiles(ctx context.Context) ([]*entities.Profile, 
 	// r.Context().Value() method always returns an interface{} type, we
 	// need to type assert it into a *sql.DB before using it.
 
-	profs := p.Repo.Profiles(ctx)
-	if profs == nil {
+	profs, err := p.Repo.Profiles(ctx)
+	if err != nil {
 		return nil, errors.New("no profiles found")
 	}
 
 	return profs, nil
+}
+
+func ProfileToModel(profile *entities.Profile) *models.Profile {
+	var model *models.Profile
+	if profile == nil {
+		return nil
+	}
+
+	model = &models.Profile{
+		ID:          profile.Entity.ID,
+		FirstName:   *profile.FirstName,
+		Initial:     *profile.Initial,
+		LastName:    *profile.LastName,
+		LastName2:   *profile.LastName2,
+		PhoneNumber: *profile.PhoneNumber,
+	}
+
+	if profile.Address != nil {
+		model.Address = &models.Address{
+			ID:      profile.Address.Entity.ID,
+			Addr1:   *profile.Address.Addr1,
+			Addr2:   *profile.Address.Addr2,
+			City:    *profile.Address.City,
+			State:   *profile.Address.State,
+			Country: *profile.Address.Country,
+			Zip:     *profile.Address.Zip,
+		}
+	}
+
+	return model
 }

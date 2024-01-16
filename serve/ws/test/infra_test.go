@@ -18,17 +18,18 @@ var client *ws.Client
 var received uint32
 
 func TestMain(m *testing.M) {
-	ctx, err := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	conn, _, err := websocket.Dial(ctx, "ws://localhost:8080/", nil)
 	if err != nil {
 		panic(err)
 	}
 
-	conn, _, er := websocket.Dial(ctx, "ws://localhost:8080/", nil)
-	if er != nil {
-		panic(er)
+	client, err = ws.NewClient(conn)
+	if err != nil {
+		panic(err)
 	}
-
-	client = ws.NewClient(conn)
 
 	m.Run()
 }
@@ -49,7 +50,7 @@ func TestSend(t *testing.T) {
 
 	t.Run("Receiver", func(tt *testing.T) {
 		tt.Parallel()
-		client.OnMessage(func(_ *ws.Message) {
+		client.OnMessage(func(_ ws.Message) {
 			atomic.AddUint32(&received, 1)
 			wg.Done()
 		})
@@ -70,10 +71,11 @@ func NewTestServer() {
 		Logger:    nil,
 	})
 
-	serv.Startup(func(mux *serve.MUX) {
-		mux.GET("/", func(w http.ResponseWriter, r *http.Request) {
+	serv.Startup(func(cfg serve.AppConfig) {
+		cfg.MUX(func(mux *http.ServeMux) {
+			mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 
+			})
 		})
-
 	})
 }

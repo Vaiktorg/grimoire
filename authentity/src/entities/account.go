@@ -1,8 +1,9 @@
 package entities
 
 type Account struct {
-	Model
-	Username string // Unique
-	Email    string // Unique
-	Password string
+	Entity
+	Username  string  // Unique
+	Email     *string // Unique
+	Password  *string
+	Signature *string
 }

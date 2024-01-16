@@ -5,7 +5,7 @@ type ISimLogger interface {
 	INFO(info string, obj ...any)
 	DEBUG(procStep string, obj ...any)
 	WARN(warn string, obj ...any)
-	ERROR(errMsg string, obj ...any)
+	ERROR(errMsg string, obj ...any) string
 	FATAL(breakage string)
 }
 
@@ -15,13 +15,14 @@ type ILogger interface {
 
 	Messages(Pagination) []Log
 
-	NewServiceLogger(config Config) ILogger
+	NewServiceLogger(config *Config) ILogger
 	Services() map[string]ILogger
 
 	Println(in ...any)
 	Printf(str string, data ...any)
 
 	TotalSent() uint64
-	Output(func(log Log))
+	BatchLogs(...Log)
+	Output(func(log Log) error)
 	Close()
 }

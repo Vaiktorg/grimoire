@@ -2,11 +2,10 @@ package documentstore
 
 import (
 	"fmt"
-	"io/ioutil"
+	"github.com/vaiktorg/grimoire/uid"
+	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/vaiktorg/grimoire/helpers"
 )
@@ -21,10 +20,10 @@ type Metadata struct {
 }
 
 type Dir struct {
-	ID    string   `json:"id" xml:"id" yaml:"id"`
+	ID    uid.UID  `json:"id" xml:"id" yaml:"id"`
 	Meta  Metadata `json:"metadata" xml:"metadata" yaml:"metadata"`
-	Dirs  map[string]*Dir
-	Files map[string]*File
+	Dirs  map[uid.UID]*Dir
+	Files map[uid.UID]*File
 
 	parent     *Dir
 	hasFiles   bool
@@ -33,29 +32,29 @@ type Dir struct {
 
 // File Represents a file
 type File struct {
-	ID   string   `json:"id" xml:"id" yaml:"id"`
+	ID   uid.UID  `json:"id" xml:"id" yaml:"id"`
 	Meta Metadata `json:"metadata" xml:"metadata" yaml:"metadata"`
 	Data []byte   `json:"data,omitempty" xml:"data,omitempty" yaml:"data,omitempty"`
 }
 
-//NewDir creates a new dir
+// NewDir creates a new dir
 func NewDir(path string) *Dir {
 	d := &Dir{
-		ID: uuid.New().String(),
+		ID: uid.New(),
 		Meta: Metadata{
 			Name:      path,
 			Path:      path,
 			Timestamp: time.Now().Format("20060102150405"),
 		},
-		Dirs:  make(map[string]*Dir),
-		Files: make(map[string]*File),
+		Dirs:  make(map[uid.UID]*Dir),
+		Files: make(map[uid.UID]*File),
 	}
 
 	return d
 }
 
 func (d *Dir) GenerateDirFromPath(dirPath string) error {
-	tree, err := ioutil.ReadDir(dirPath)
+	tree, err := os.ReadDir(dirPath)
 	if err != nil {
 		return err
 	}
@@ -64,13 +63,17 @@ func (d *Dir) GenerateDirFromPath(dirPath string) error {
 	d.Meta.Path = dirPath
 
 	for _, elem := range tree {
-		d.Meta.size += elem.Size()
+		info, e := elem.Info()
+		if e != nil {
+			continue
+		}
+		d.Meta.size += info.Size()
 		if elem.IsDir() {
 
 			d2 := &Dir{
 				// Directories
 				parent: d,
-				ID:     uuid.New().String(),
+				ID:     uid.New(),
 				Meta: Metadata{
 					Name:        elem.Name(),
 					Path:        filepath.Join(dirPath, elem.Name()),
@@ -91,12 +94,12 @@ func (d *Dir) GenerateDirFromPath(dirPath string) error {
 		if !elem.IsDir() {
 			f := &File{
 				// Files
-				ID: uuid.New().String(),
+				ID: uid.New(),
 				Meta: Metadata{
 					Name:        elem.Name(),
 					Path:        filepath.Join(dirPath, elem.Name()),
-					Size:        ByteCountBinary(elem.Size()),
-					Timestamp:   elem.ModTime().Format("2006-01-02_15:04:05"),
+					Size:        ByteCountBinary(info.Size()),
+					Timestamp:   info.ModTime().Format("2006-01-02_15:04:05"),
 					IsProtected: false,
 				},
 			}
@@ -115,14 +118,14 @@ func (d *Dir) GenerateDirFromPath(dirPath string) error {
 func (d *Dir) AddDir(name string) *Dir {
 	d2 := &Dir{
 		parent: d,
-		ID:     uuid.New().String(),
+		ID:     uid.New(),
 		Meta: Metadata{
 			Name:      name,
 			Path:      filepath.Join(d.Meta.Path, name),
 			Timestamp: helpers.MakeTimestampNum(),
 		},
-		Dirs:  make(map[string]*Dir),
-		Files: make(map[string]*File),
+		Dirs:  make(map[uid.UID]*Dir),
+		Files: make(map[uid.UID]*File),
 	}
 
 	if dirs, ok := d.Dirs[d2.ID]; !ok {
@@ -139,7 +142,7 @@ func (d *Dir) AddDir(name string) *Dir {
 // AddFile Add files to directory
 func (d *Dir) AddFile(filename string) *File {
 	file := &File{
-		ID: uuid.New().String(),
+		ID: uid.New(),
 		Meta: Metadata{
 			Name:      filename,
 			Path:      filepath.Join(d.Meta.Path, filename),
@@ -160,7 +163,7 @@ func (d *Dir) AddFile(filename string) *File {
 	return file
 }
 
-func (d *Dir) DeleteDir(ids ...string) {
+func (d *Dir) DeleteDir(ids ...uid.UID) {
 	for _, id := range ids {
 		if dir, ok := d.Dirs[id]; ok {
 			for _, f := range dir.Files {
@@ -175,7 +178,7 @@ func (d *Dir) DeleteDir(ids ...string) {
 	}
 }
 
-func (d *Dir) DeleteFile(ids ...string) {
+func (d *Dir) DeleteFile(ids ...uid.UID) {
 	for _, id := range ids {
 		if f, ok := d.Files[id]; ok {
 			d.totalItems--
@@ -185,8 +188,8 @@ func (d *Dir) DeleteFile(ids ...string) {
 	}
 }
 
-func (d *Dir) Protect(isprotected bool) {
-	d.Meta.IsProtected = isprotected
+func (d *Dir) Protect(isProtected bool) {
+	d.Meta.IsProtected = isProtected
 }
 
 func ByteCountBinary(b int64) string {

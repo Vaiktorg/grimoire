@@ -1,57 +1,82 @@
 package dashboard
 
 import (
-	"bytes"
+	"context"
 	"fmt"
 	"github.com/vaiktorg/grimoire/log"
+	"github.com/vaiktorg/grimoire/serve/simws"
+	"github.com/vaiktorg/grimoire/serve/ws"
+	"github.com/vaiktorg/grimoire/uid"
 	"html/template"
 	"net/http"
-	"strconv"
+	"path/filepath"
 	"strings"
 )
 
 type Dashboard struct {
 	running bool
-	mux     *http.ServeMux
-	tmpl    *template.Template
-	logger  log.ILogger
+
+	mux  *http.ServeMux
+	tmpl *template.Template
+
+	ws     simws.IWebSocket
+	logger log.ILogger
 }
 
 type Config struct {
-	Logger log.ILogger
+	Logger            log.ILogger
+	TemplateDirectory string
+	StaticDirectory   string
+	Context           context.Context
 }
 
-func NewDashboard(config Config) *Dashboard {
+func NewDashboard(config *Config) (*Dashboard, error) {
+	// Template directory
+	templateDir := config.TemplateDirectory
+	if templateDir == "" {
+		templateDir = "templates" // default path
+	}
+
+	// Parse templates
+	tmpl, err := template.New("").Funcs(template.FuncMap{"lower": strings.ToLower}).ParseGlob(filepath.Join(templateDir, "*.gohtml"))
+	if err != nil {
+		return nil, fmt.Errorf("error parsing templates: %w", err)
+	}
+
+	// Static directory
+	staticDir := config.StaticDirectory
+	if staticDir == "" {
+		staticDir = "./static" // default path
+	}
+
 	d := &Dashboard{
-		tmpl: template.Must(template.New("").Funcs(template.FuncMap{
-			"lower": strings.ToLower,
-		}).ParseGlob("templates/*.gohtml")),
+		mux: http.NewServeMux(),
+		ws: simws.NewWebSocket(&ws.Config{
+			GlobalID: uid.NewUID(64),
+			Logger: config.Logger.NewServiceLogger(&log.Config{
+				CanPrint:    true,
+				CanOutput:   true,
+				Persist:     true,
+				ServiceName: "SimWebSocketConfig",
+			}),
+		}),
+		tmpl:   tmpl,
 		logger: config.Logger,
-		mux:    http.NewServeMux(),
 	}
 
-	if config.Logger == nil {
-		panic("logger is nil")
-	}
-
-	registerMux(d)
+	registerMux(d, staticDir)
 
 	d.logger.TRACE("New Dashboard Handler")
 
-	return d
+	return d, nil
 }
 
-func registerMux(d *Dashboard) {
+func registerMux(d *Dashboard, staticDir string) {
 	d.mux.HandleFunc("/", d.homeHandler)
+	d.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir)))) // Static Content
 
-	// Static Content
-	d.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-
-	// Logs SSE Handler
-	d.mux.HandleFunc("/sse", d.loggerHandler)
-
-	// FormActions
-	d.mux.HandleFunc("/actions", d.actionsMux)
+	d.mux.HandleFunc("/ws", d.ws.ServeHTTP)    // Logs SSE Handler
+	d.mux.HandleFunc("/actions", d.actionsMux) // FormActions
 }
 
 func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -66,61 +91,18 @@ func (d *Dashboard) homeHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (d *Dashboard) loggerHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
-	d.checkLastMessages(r)
-
-	if d.logger != nil {
-		d.logger.Output(func(logMsg log.Log) {
-			if d.running {
-				d.executeLogPartial(w, logMsg)
-			}
-		})
-	}
-}
-func (d *Dashboard) checkLastMessages(r *http.Request) {
-	// Check for last cached messages
-	lastId := r.Header.Get("Last-Event-ID")
-	if lastId == "" {
-		return
-	}
-
-	logId, err := strconv.Atoi(lastId)
+func (d *Dashboard) ListenForClientEvents(host string) error {
+	client, err := d.ws.Dial(host, true)
 	if err != nil {
-		return
+		return err
 	}
 
-	// LogID are sequential N+1, meaning if last ClientID is 563,
-	// then it should return the last 563 logs since runtime.
-	cached := d.logger.Messages(log.Pagination{
-		Page:   1,
-		Amount: logId,
-	})
-	if d.logger.TotalSent() < uint64(logId) || cached == nil {
-		return
-	}
-
-	d.logger.BatchLogs(cached...)
-}
-func (d *Dashboard) executeLogPartial(w http.ResponseWriter, msgs ...log.Log) {
-	partialBuff := bytes.Buffer{}
-	err := d.tmpl.ExecuteTemplate(&partialBuff, "src-card", msgs)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	for _, msg := range msgs {
-		// Send the rendered row as an SSE event
-		_, err = fmt.Fprintf(w, "id: %d\ntype:%s\ndata: %v\n\n", msg.ID, "message", strings.TrimSpace(partialBuff.String()))
-		if err != nil {
-			http.Error(w, err.Error(), 500)
+	go client.Listen(func(msg simws.Message) {
+		switch msg.KEY {
+		case "log":
+			client.Send(msg.KEY, msg.Data)
 		}
+	})
 
-		w.(http.Flusher).Flush()
-	}
+	return nil
 }

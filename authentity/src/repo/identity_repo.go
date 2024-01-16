@@ -2,8 +2,8 @@ package repo
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"github.com/vaiktorg/grimoire/authentity/src/entities"
+	"github.com/vaiktorg/grimoire/uid"
 	"gorm.io/gorm"
 	"sync"
 )
@@ -20,8 +20,8 @@ func (a *IdentityRepo) FindIdentityByID(ctx context.Context, id string) (*entiti
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	identity := &entities.Identity{Model: entities.Model{ID: id}}
-	if err := a.db.WithContext(ctx).Take(&identity).Error; err != nil {
+	identity := &entities.Identity{}
+	if err := a.db.WithContext(ctx).Take(&identity, "id  = ?", id).Error; err != nil {
 		return nil, err
 	}
 
@@ -29,17 +29,12 @@ func (a *IdentityRepo) FindIdentityByID(ctx context.Context, id string) (*entiti
 }
 
 // FindIdentityByProfileID returns Identity when matched with a ProfileID.
-func (a *IdentityRepo) FindIdentityByProfileID(ctx context.Context, profileId string) (*entities.Identity, error) {
+func (a *IdentityRepo) FindIdentityByProfileID(ctx context.Context, profileId uid.UID) (*entities.Identity, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	uid, err := uuid.Parse(profileId)
-	if err != nil {
-		return nil, err
-	}
-
-	identity := &entities.Identity{ProfileID: uid}
-	if err = a.db.WithContext(ctx).Take(&identity).Error; err != nil {
+	identity := &entities.Identity{}
+	if err := a.db.WithContext(ctx).Find(&identity, "profile_id = ?", profileId).Error; err != nil {
 		return nil, err
 	}
 
@@ -51,10 +46,8 @@ func (a *IdentityRepo) FindIdentityByAccountID(ctx context.Context, accId string
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	identity := &entities.Identity{Account: &entities.Account{Model: entities.Model{ID: accId}}}
-	if err := a.db.WithContext(ctx).
-		Joins("Account", a.db.Where(identity)).
-		Take(&identity).Error; err != nil {
+	identity := &entities.Identity{}
+	if err := a.db.WithContext(ctx).Joins("Account", a.db.Where("account_id = ?", accId)).Find(&identity).Error; err != nil {
 		return nil, err
 	}
 
@@ -65,7 +58,9 @@ func (a *IdentityRepo) FindIdentityByAccountUsername(ctx context.Context, userna
 	defer a.mu.Unlock()
 
 	identity := &entities.Identity{}
-	if err := a.db.WithContext(ctx).Joins("Account", a.db.Where(&entities.Account{Username: username})).Take(&identity).Error; err != nil {
+	if err := a.db.WithContext(ctx).Joins(
+		"Account",
+		a.db.Where("username = ?", username)).Take(&identity).Error; err != nil {
 		return nil, err
 	}
 
@@ -75,8 +70,8 @@ func (a *IdentityRepo) FindIdentityByAccountEmail(ctx context.Context, email str
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	identity := &entities.Identity{Account: &entities.Account{Email: email}}
-	if err := a.db.WithContext(ctx).Joins("Account", a.db.Where(&entities.Account{Email: email})).Take(&identity).Error; err != nil {
+	identity := &entities.Identity{}
+	if err := a.db.WithContext(ctx).Joins("Account", a.db.Where("email = ?", email)).Take(&identity).Error; err != nil {
 		return nil, err
 	}
 
@@ -95,4 +90,7 @@ func (a *IdentityRepo) AllIdentities(ctx context.Context) ([]*entities.Identity,
 
 func (a *IdentityRepo) Persist(ctx context.Context, identity *entities.Identity) error {
 	return a.db.WithContext(ctx).Save(identity).Error
+}
+func (a *IdentityRepo) Update(ctx context.Context, identity *entities.Identity) error {
+	return a.db.WithContext(ctx).Model(&identity).Select("Account", "Profile", "Resources").Updates(identity).Error
 }

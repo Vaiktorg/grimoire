@@ -8,18 +8,20 @@ import (
 )
 
 type DataProvider struct {
-	Mutex           sync.Mutex
-	db              *gorm.DB
-	ProfileService  services.ProfileService
-	IdentityService services.IdentityService
-	AccountsService services.AccountService
+	Mutex            sync.Mutex
+	migrator         gorm.Migrator
+	ProfileService   services.ProfileService
+	IdentityService  services.IdentityService
+	AccountsService  services.AccountService
+	ResourcesService services.ResourceService
 }
 
 func NewDataProvider(db *gorm.DB) *DataProvider {
 	return &DataProvider{
-		db:              db,
-		AccountsService: services.NewAccountService(repo.NewAccountRepo(db)),
-		IdentityService: services.NewIdentityService(repo.NewIdentityRepo(db)),
-		ProfileService:  services.NewProfileService(repo.NewProfileRepo(db)),
+		migrator:         db.Migrator(),
+		AccountsService:  services.NewAccountService(repo.NewAccountRepo(db)),
+		IdentityService:  services.NewIdentityService(repo.NewIdentityRepo(db)),
+		ProfileService:   services.NewProfileService(repo.NewProfileRepo(db)),
+		ResourcesService: services.NewResourceService(repo.NewIdentityRepo(db)),
 	}
 }

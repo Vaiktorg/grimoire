@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"github.com/vaiktorg/grimoire/log"
 	"github.com/vaiktorg/grimoire/uid"
 	"net/http"
 	"nhooyr.io/websocket"
@@ -16,125 +17,104 @@ type IConn interface {
 
 type IWebSocket interface {
 	Sessions() *Sessions
-	Dial(string, bool) (IClient, error)
-	Broadcast(key string, data any)
-	OnMessage(func(Message))
+	Dial(string) (IClient, error)
+	Broadcast(string, any)
+	OnMessage(func(Message, *ConnSession))
+	ServeHTTP(http.ResponseWriter, *http.Request)
 }
 
 type WebSocket struct {
-	mu  sync.Mutex
-	wg  *sync.WaitGroup
-	ctx context.Context
+	mu sync.Mutex
+	wg *sync.WaitGroup
 
-	sess *Sessions
+	sess   *Sessions
+	logger log.ILogger
 
-	gob bool // false: json, true: gob
-
-	onMessage    func(Message)
-	onConnect    []func(client IClient)
-	onDisconnect []func(client IClient)
+	onMessage func(Message, *ConnSession)
 }
 
-func NewWebSocket() *WebSocket {
+func NewWebSocket(config *Config) *WebSocket {
 	return &WebSocket{
-		wg:   new(sync.WaitGroup),
-		sess: NewConnSessions(),
+		mu:     sync.Mutex{},
+		wg:     new(sync.WaitGroup),
+		sess:   config.Sessions,
+		logger: config.Logger,
 	}
 }
 
-func (s *WebSocket) Dial(addr string, saveSess bool) (IClient, error) {
-	conn, _, err := websocket.Dial(s.ctx, addr, nil)
+func (ws *WebSocket) Dial(addr string) (IClient, error) {
+	conn, _, err := websocket.Dial(context.Background(), addr, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	client := NewClient(conn)
-
-	if !saveSess {
-		return client, nil
-	}
-
-	if err = s.sess.NewSession(client); err != nil {
+	client, err := NewClient(conn)
+	if err != nil {
 		return nil, err
 	}
 
-	client.OnConnect(s.onConnect...)
-	client.OnDisconnect(s.onDisconnect...)
-	client.OnDisconnect(func(client IClient) {
-		println("Client OnDisconnect " + client.ID())
-		_ = s.sess.Disconnect(client.ID())
-	})
+	if ws.onMessage != nil {
+		go func() {
+			client.OnMessage(func(m Message) {
+				sessId := ws.sess.Session(client.id)
+				//ws.logger.TRACE("onMessage event for: ", m, client.id, sessId)
+				ws.onMessage(m, sessId)
+			})
+		}()
+	}
 
 	return client, nil
 }
-func (s *WebSocket) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (ws *WebSocket) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	client := NewClient(conn)
-
-	if err = s.sess.NewSession(client); err != nil {
+	client, err := NewClient(conn)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		_ = conn.Close(websocket.StatusInternalError, err.Error())
 		return
 	}
 
-	client.OnConnect(s.onConnect...)
-	client.OnDisconnect(s.onDisconnect...)
-	client.OnDisconnect(func(client IClient) {
-		println("Client OnDisconnect " + client.ID())
-		_ = s.sess.Disconnect(client.ID())
-	})
+	if err = ws.sess.NewSession(client); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// Listen
-	if s.onMessage != nil {
-		go client.OnMessage(s.onMessage)
-
-		// Send Token
-		client.Send("Token", s.sess.Session(client.id).Token)
+	if ws.onMessage != nil {
+		go func() {
+			client.OnMessage(func(m Message) {
+				sessId := ws.sess.Session(client.id)
+				//ws.logger.TRACE("onMessage event for: ", m, client.id, sessId)
+				ws.onMessage(m, sessId)
+			})
+		}()
 	}
 }
 
 // OnMessage assigns a single handler where we receive a ws.Message straight from the ws.Client's proc loop.
-func (s *WebSocket) OnMessage(handler func(message Message)) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (ws *WebSocket) OnMessage(handler func(message Message, client *ConnSession)) {
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
 
-	s.onMessage = handler
-}
-
-// OnConnect appends a handler that will be called at the end of the Client's connection sequence.
-func (s *WebSocket) OnConnect(handler ...func(client IClient)) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.onConnect = append(s.onConnect, handler...)
-}
-
-// OnDisconnect appends a handler that will be called at the end of the Client's disconnection sequence.
-func (s *WebSocket) OnDisconnect(handler ...func(client IClient)) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.onDisconnect = append(s.onDisconnect, handler...)
+	ws.onMessage = handler
 }
 
 // Broadcast sends a message to every connected Client
-func (s *WebSocket) Broadcast(key string, data any) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (ws *WebSocket) Broadcast(key string, data any) {
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
 
-	s.sess.sessions.Iterate(func(k uid.UID, session *ConnSession) {
-		session.client.Send(key, data)
+	ws.sess.Iterate(func(uid uid.UID, session *ConnSession) {
+		session.Client.Send(key, data)
 	})
 }
+func (ws *WebSocket) Sessions() *Sessions {
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
 
-func (s *WebSocket) Sessions() *Sessions {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return s.sess
+	return ws.sess
 }
