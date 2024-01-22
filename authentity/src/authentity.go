@@ -45,7 +45,7 @@ func NewAuthentity(config *Config) *Authentity {
 		Pepper: []byte(uid.NewUID(8)),
 	}
 
-	mc, err := gwt.NewMultiCoder[*gwt.Resources](&spice)
+	mc, err := gwt.NewMultiCoder[*gwt.Resources](spice)
 	if err != nil {
 		panic(err)
 	}
@@ -173,7 +173,7 @@ func (a *Authentity) LoginToken(tkn string) error {
 		return err
 	}
 
-	return tokenVal.ValidateGWT(&a.spice)
+	return tokenVal.ValidateGWT(a.spice)
 }
 func (a *Authentity) LogoutToken(pCtx context.Context, tkn string) error {
 	tokenVal, err := a.mc.Decode(tkn)
@@ -181,7 +181,7 @@ func (a *Authentity) LogoutToken(pCtx context.Context, tkn string) error {
 		return err
 	}
 
-	if err = tokenVal.ValidateGWT(&a.spice); err != nil {
+	if err = tokenVal.ValidateGWT(a.spice); err != nil {
 		return err
 	}
 
@@ -208,7 +208,7 @@ func (a *Authentity) RefreshToken(tkn string) (gwt.Token, error) {
 		}
 
 		return a.provider.AccountsService.AccountHasUsername(context.Background(), string(header.Recipient))
-	}, &a.spice); err != nil {
+	}, a.spice); err != nil {
 		return gwt.Token{}, err
 	}
 

@@ -55,7 +55,6 @@ func ProfileToModel(profile *entities.Profile) *models.Profile {
 		FirstName:   *profile.FirstName,
 		Initial:     *profile.Initial,
 		LastName:    *profile.LastName,
-		LastName2:   *profile.LastName2,
 		PhoneNumber: *profile.PhoneNumber,
 	}
 

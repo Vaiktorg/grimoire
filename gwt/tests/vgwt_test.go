@@ -4,21 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/vaiktorg/grimoire/gwt"
-	"github.com/vaiktorg/grimoire/uid"
 	"testing"
+	"time"
 )
 
-var vh *gwt.VisualHash[*gwt.Resources]
+var mc, _ = gwt.NewMultiCoder[*gwt.Resources]()
 
 func TestVGWT(t *testing.T) {
-	vh, err = gwt.NewVisualHash[*gwt.Resources]()
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-		return
-	}
-
-	original := gwt.NewResources(uid.NewUID(gwt.FixedIDLen))
+	// Resources
+	original := gwt.NewResources([]byte("This is the UserID"))
 
 	res1 := gwt.NewResource(gwt.NetworkDatabaseAPI, gwt.DefaultRoles[gwt.Dev])
 	original.AddResource(res1)
@@ -26,15 +20,34 @@ func TestVGWT(t *testing.T) {
 	res2 := gwt.NewResource(gwt.DevToolsCICD, gwt.DefaultRoles[gwt.Dev])
 	original.AddResource(res2)
 
-	var originalHash []byte
-	if originalHash, err = vh.CreateHashCard(original); err != nil {
+	// GoWebToken
+	gwTok := &gwt.GWT[*gwt.Resources]{
+		Header: gwt.Header{
+			Issuer:    []byte("Authentity"),
+			Recipient: []byte("VKTRG"),
+			Expires:   time.Now().UTC().Add(time.Minute * 15),
+		},
+		Body: original,
+	}
+
+	tok, err := mc.Encode(gwTok)
+	if err != nil {
 		t.Error(err)
 		t.FailNow()
 		return
 	}
 
-	var hash []byte
-	hash, err = vh.ReadHashCard("id_card.png")
+	gwt.SetVTokenConfig(gwt.SmallConfig)
+
+	var originalHash []byte
+	if originalHash, err = tok.CreateTokenCard(); err != nil {
+		t.Error(err)
+		t.FailNow()
+		return
+	}
+
+	var decodedHash []byte
+	decodedHash, err = tok.ReadTokenCard("id_card.png")
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -42,19 +55,15 @@ func TestVGWT(t *testing.T) {
 	}
 
 	fmt.Println(originalHash)
-	fmt.Println(hash)
+	fmt.Println(decodedHash)
 
-	if !bytes.Equal(hash, originalHash) {
-		t.Error("hash and token signature do not match")
+	fmt.Println(gwt.XORText(originalHash, gwt.HashKey))
+	fmt.Println(gwt.XORText(decodedHash, gwt.HashKey))
+	fmt.Println(tok.Signature)
+
+	if !bytes.Equal(decodedHash, originalHash) {
+		t.Error("decodedHash and token signature do not match")
 		t.FailNow()
 	}
-}
-func padByteArray(data []byte, length int) []byte {
-	if len(data) >= length {
-		return data[:length] // Truncate if longer
-	}
-	padded := make([]byte, length)
-	copy(padded, data)
-	// The rest of padded will be zero-valued
-	return padded
+
 }

@@ -16,7 +16,6 @@ type Profile struct {
 	FirstName string `json:"firstName"`
 	Initial   string `json:"initial"`
 	LastName  string `json:"lastName"`
-	LastName2 string `json:"lastName2"`
 
 	PhoneNumber string `json:"phone"` // Unique
 

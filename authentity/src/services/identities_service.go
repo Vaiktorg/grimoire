@@ -125,7 +125,6 @@ func IdentityToEntity(identity *models.Identity) *entities.Identity {
 			FirstName:   &identity.Profile.FirstName,
 			Initial:     &identity.Profile.Initial,
 			LastName:    &identity.Profile.LastName,
-			LastName2:   &identity.Profile.LastName2,
 			PhoneNumber: &identity.Profile.PhoneNumber,
 		}
 

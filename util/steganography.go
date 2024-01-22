@@ -16,12 +16,11 @@ const (
 	Threshold        = 15
 )
 
-func encode() error {
+func encode(message string) error {
 	imgFile, _ := os.Open("input.png")
 	defer imgFile.Close()
 	img, _, _ := image.Decode(imgFile)
 
-	message := "Secret Message"
 	binaryMessage := stringToBinary(message)
 
 	output := image.NewRGBA(img.Bounds())
@@ -140,9 +139,9 @@ func setLSB(value uint32, bit byte) uint32 {
 
 // =================================================
 
-func decode() string {
+func decode(imagePath string) string {
 	// Load the encoded image
-	imgFile, _ := os.Open("output.png")
+	imgFile, _ := os.Open(imagePath)
 	defer imgFile.Close()
 	img, _, _ := image.Decode(imgFile)
 

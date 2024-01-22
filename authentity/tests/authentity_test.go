@@ -28,7 +28,6 @@ var (
 		FirstName:   "John",
 		Initial:     "E",
 		LastName:    "Smith",
-		LastName2:   "Johnson",
 		PhoneNumber: "1234567890",
 		Address: &models.Address{
 			Addr1:   "666 Hellsing Ave.",

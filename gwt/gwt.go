@@ -3,7 +3,8 @@ package gwt
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/sha256"
+	"crypto/sha512"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -12,10 +13,26 @@ import (
 	"time"
 )
 
+//go:embed res/salt.hash
+var salt []byte
+
+//go:embed res/pepper.hash
+var pepper []byte
+
+//go:embed res/key.hash
+var HashKey []byte
+
 type Spice struct {
-	Salt   []byte
-	Pepper []byte
+	Salt   [16]byte
+	Pepper [16]byte
 }
+
+var spice = Spice{
+	Salt:   [16]byte(salt),
+	Pepper: [16]byte(pepper),
+}
+
+// ====================================================================================================
 
 type MultiCoder[T any] struct {
 	spice Spice
@@ -30,13 +47,38 @@ const (
 
 const TokenExpireTime = time.Minute * 15
 
-func NewMultiCoder[T any](spice Spice) (*MultiCoder[T], error) {
+func NewMultiCoder[T any]() (*MultiCoder[T], error) {
 	mc, err := util.NewMultiCoder[*GWT[T]]()
 	if err != nil {
 		return nil, err
 	}
 
-	return &MultiCoder[T]{spice: spice, mc: mc}, nil
+	return &MultiCoder[T]{
+		spice: spice,
+		mc:    mc,
+	}, nil
+}
+
+type GWT[T any] struct {
+	Header Header
+	Body   T
+	Token  string
+}
+type Header struct {
+	Issuer    []byte    // where the token originated
+	Recipient []byte    // who the token belongs to
+	Expires   time.Time // When it will expirm.
+}
+
+// Token gets delivered to the user.
+type Token struct {
+	// "1a2.b3c.4d5" [data -> byte -> b64].
+	// Return this to requester.
+	Token string
+
+	// ___.OOO  Last section of Token.
+	// Only accessible when decoded from token string
+	Signature []byte
 }
 
 func (m *MultiCoder[T]) Encode(tok *GWT[T]) (ret Token, err error) {
@@ -46,8 +88,8 @@ func (m *MultiCoder[T]) Encode(tok *GWT[T]) (ret Token, err error) {
 	}
 
 	// ------------------------------------------------------------------------------------------------
-	// Gen Signature
-	hashSignature, err := GenSignature(data, m.spice)
+	// Gen Signature [64]byte 128bit
+	hashSignature, err := GenSignature(HashKey, data)
 	if err != nil {
 		return
 	}
@@ -59,13 +101,12 @@ func (m *MultiCoder[T]) Encode(tok *GWT[T]) (ret Token, err error) {
 
 	// ------------------------------------------------------------------------------------------------
 	// Results in token "b64Data.b64Signature"
-
 	return Token{
 		Token: strings.Join([]string{
 			b64value,
 			b64signature,
 		}, "."),
-		Signature: base64.URLEncoding.EncodeToString(hashSignature)}, nil
+		Signature: hashSignature}, nil
 }
 func (m *MultiCoder[T]) Decode(token string) (*GWT[T], error) {
 	if token == "" {
@@ -93,7 +134,7 @@ func (m *MultiCoder[T]) Decode(token string) (*GWT[T], error) {
 		return nil, err
 	}
 
-	if hashSignature, _ := GenSignature(tknBuff, m.spice); !bytes.Equal(hashSignature, sigBuff) {
+	if hashSignature, _ := GenSignature(HashKey, tknBuff); !bytes.Equal(hashSignature, sigBuff) {
 		return nil, errors.New(ErrorInvalidToken)
 	}
 
@@ -101,54 +142,48 @@ func (m *MultiCoder[T]) Decode(token string) (*GWT[T], error) {
 	return ret, nil
 }
 
-func GenSignature(tokenBuff []byte, spice Spice) ([]byte, error) {
+//	func XORText(str []byte) (hash []byte) {
+//		lut := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+//
+//		hash = make([]byte, hashLen)
+//		// Convert each character to a byte
+//		for i, c := range str {
+//			hash[i] = lut[c%byte(len(lut))]
+//		}
+//
+//		return hash
+//	}
+
+func GenSignature(key []byte, tokenBuff []byte) ([]byte, error) {
+	m := hmac.New(sha512.New, key)
+
 	//Generate gwt Signature from decoded payload
-	hash := hmac.New(sha256.New, spice.Salt)
-	_, err := hash.Write(tokenBuff)
+	_, err := m.Write(tokenBuff)
 	if err != nil {
 		return nil, errors.New(ErrorInvalidToken)
 	}
 
-	return hash.Sum(spice.Pepper), nil
+	m.Sum(spice.Salt[:])
+	m.Sum(spice.Pepper[:])
+
+	return m.Sum(nil), nil
 }
 
 // =======================================================
 
-type GWT[T any] struct {
-	Header Header
-	Body   T
-	Token  string
+func ValidateGWT[T any](gwt *GWT[T]) error {
+	return ValidateGWTWithBody(gwt, nil)
 }
-type Header struct {
-	Issuer    []byte    // where the token originated
-	Recipient []byte    // who the token belongs to
-	Expires   time.Time // When it will expirm.
-}
-
-// Token gets delivered to the user.
-type Token struct {
-	// "1a2.b3c.4d5" [data -> byte -> b64].
-	// Return this to requester.
-	Token string
-
-	// ___.OOO  Last section of Token.
-	// Only accessible when decoded from token string
-	Signature string
-}
-
-func (gwt *GWT[T]) ValidateGWT(spice Spice) error {
-	return gwt.ValidateGWTWithBody(nil, spice)
-}
-
-func (gwt *GWT[T]) ValidateGWTHeader(h func(*Header) error, spice Spice) error {
-	err := gwt.ValidateGWT(spice)
+func ValidateGWTHeader[T any](gwt *GWT[T], h func(*Header) error) error {
+	err := ValidateGWT[T](gwt)
 	if err != nil {
 		return err
 	}
 
 	return h(&gwt.Header)
 }
-func (gwt *GWT[T]) ValidateGWTWithBody(bodyValidHandler func(T) error, spice Spice) error {
+
+func ValidateGWTWithBody[T any](gwt *GWT[T], bodyValidHandler func(T) error) error {
 	if gwt.Header.Issuer == nil || gwt.Header.Recipient == nil || gwt.Header.Expires.IsZero() {
 		return errors.New(ErrorInvalidToken)
 	}
@@ -163,12 +198,12 @@ func (gwt *GWT[T]) ValidateGWTWithBody(bodyValidHandler func(T) error, spice Spi
 		}
 	}
 
-	return gwt.ValidateSignature(gwt.Token, spice)
+	return ValidateSignature[T](gwt)
 }
-func (gwt *GWT[T]) ValidateSignature(token string, spice Spice) error {
+func ValidateSignature[T any](gwt *GWT[T]) error {
 	// tkn := tknParts[0]
 	// sig := tknParts[1]
-	tknParts := strings.Split(token, ".")
+	tknParts := strings.Split(gwt.Token, ".")
 	if len(tknParts) != 2 {
 		return errors.New(ErrorInvalidToken)
 	}
@@ -197,10 +232,10 @@ func (gwt *GWT[T]) ValidateSignature(token string, spice Spice) error {
 		return err
 	}
 
-	// ====================================================================================================
-	// Token Signature
+	//====================================================================================================
+	//Token Signature
 
-	nSigBuff, err := GenSignature(tokBuff, spice)
+	nSigBuff, err := GenSignature(HashKey, tokBuff)
 	if err != nil {
 		return err
 	}

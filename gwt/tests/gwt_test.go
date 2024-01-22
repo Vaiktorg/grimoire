@@ -8,13 +8,8 @@ import (
 	"time"
 )
 
-var mc, err = gwt.NewMultiCoder[*gwt.Resources](spice)
-
 func TestMain(m *testing.M) {
 	defer m.Run()
-	if err != nil {
-		panic(err)
-	}
 }
 
 var TestAccount = &gwt.GWT[*gwt.Resources]{
@@ -26,11 +21,6 @@ var TestAccount = &gwt.GWT[*gwt.Resources]{
 	Body: gwt.NewResources(uid.NewUID(gwt.FixedIDLen)),
 }
 
-var spice = gwt.Spice{
-	Salt:   []byte("salt"),
-	Pepper: []byte("pepper"),
-}
-
 func TestEncodeGWT(t *testing.T) {
 	token, err := mc.Encode(TestAccount)
 	if token.Token == "" {
@@ -38,27 +28,30 @@ func TestEncodeGWT(t *testing.T) {
 		t.FailNow()
 	}
 
-	if token.Signature == "" {
+	if token.Signature == nil || len(token.Signature) == 0 {
 		t.Errorf("token signature is empty")
 		t.FailNow()
 	}
 
 	TestAccount.Token = token.Token
 
-	t.Logf("%+v", token)
-
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 }
 func TestDecodeGWT(t *testing.T) {
+	var mc, err = gwt.NewMultiCoder[*gwt.Resources]()
+	if err != nil {
+		panic(err)
+	}
+
 	if TestAccount.Token == "" {
 		t.Errorf("token string is empty")
 		t.FailNow()
 	}
 
 	token, err := mc.Decode(TestAccount.Token)
-	if err = token.ValidateGWT(spice); err != nil {
+	if err = gwt.ValidateGWT(token); err != nil {
 		t.Errorf(err.Error())
 		t.FailNow()
 	}

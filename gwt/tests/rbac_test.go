@@ -21,7 +21,7 @@ func TestSerializationDeserialization(t *testing.T) {
 
 	// Deserialize
 	resources := &gwt.Resources{}
-	err = resources.Deserialize(serialized)
+	err := resources.Deserialize(serialized)
 	if err != nil {
 		t.Fatalf("Deserialization failed: %v", err)
 		return

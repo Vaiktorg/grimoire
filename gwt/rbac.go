@@ -64,43 +64,40 @@ func (res *Resources) Serialize() []byte {
 
 	// Serialize UserID directly as a byte slice
 	buffer.Write(res.UserID)
-	fmt.Println(buffer.Bytes())
 
 	// Serialize number of resources
 	buffer.WriteByte(byte(len(res.Resources)))
-	fmt.Println(buffer.Bytes())
+
 	for _, r := range res.Resources {
 		// Serialize resource ID directly as a byte slice
 		buffer.Write(r.ResID)
-		fmt.Println(buffer.Bytes())
 
 		// Serialize resource type as an index
 		buffer.WriteByte(resourceTypeToIndex(r.Type))
-		fmt.Println(buffer.Bytes())
 
 		// Serialize number of role assignments
 		buffer.WriteByte(byte(len(r.Roles)))
-		fmt.Println(buffer.Bytes())
+
 		for _, role := range r.Roles {
 			// Serialize role type
 			roleTypeIndex := roleTypeToIndex(string(role.Type))
 			buffer.WriteByte(roleTypeIndex)
-			fmt.Println(buffer.Bytes())
+
 			// Serialize permissions
 			buffer.WriteByte(byte(role.Permissions))
-			fmt.Println(buffer.Bytes())
+
 			/// ==========
 			// Len of Claims
 			buffer.WriteByte(byte(len(role.Claims)))
-			fmt.Println(buffer.Bytes())
+
 			for _, claim := range role.Claims {
 
 				// len of claim
 				buffer.WriteByte(byte(len(claim)))
-				fmt.Println(buffer.Bytes())
+
 				// claim data
 				buffer.Write([]byte(claim))
-				fmt.Println(buffer.Bytes())
+
 			}
 		}
 
@@ -110,12 +107,10 @@ func (res *Resources) Serialize() []byte {
 }
 func (res *Resources) Deserialize(data []byte) error {
 	buffer := bytes.NewBuffer(data)
-	fmt.Println(buffer.Bytes())
 
 	// Deserialize UserID
 	res.UserID = make([]byte, FixedIDLen)
 	_, _ = buffer.Read(res.UserID)
-	fmt.Println(buffer.Bytes())
 
 	numResources, _ := buffer.ReadByte()
 	resources := make([]Resource, numResources)
@@ -127,34 +122,34 @@ func (res *Resources) Deserialize(data []byte) error {
 
 		// Deserialize resource type
 		resTypeIndex, _ := buffer.ReadByte()
-		fmt.Println(buffer.Bytes())
+
 		resources[i].Type = indexToResourceType[resTypeIndex]
 
 		// Deserialize roles
 		numRoles, _ := buffer.ReadByte()
-		fmt.Println(buffer.Bytes())
+
 		resources[i].Roles = make([]Role, numRoles)
 		for j := range resources[i].Roles {
 			// Deserialize role type
 			roleTypeIndex, _ := buffer.ReadByte()
-			fmt.Println(buffer.Bytes())
+
 			resources[i].Roles[j].Type = indexToRoleType[roleTypeIndex]
 
 			// Deserialize permissions
 			permByte, _ := buffer.ReadByte()
-			fmt.Println(buffer.Bytes())
+
 			resources[i].Roles[j].Permissions = Permission(permByte)
 
 			// Len Claims
 			numClaims, _ := buffer.ReadByte()
-			fmt.Println(buffer.Bytes())
+
 			resources[i].Roles[j].Claims = make([]Claim, numClaims)
 			for k := range resources[i].Roles[j].Claims {
 				claimLen, _ := buffer.ReadByte()
-				fmt.Println(buffer.Bytes())
+
 				claim := make([]byte, claimLen)
 				_, _ = buffer.Read(claim)
-				fmt.Println(buffer.Bytes())
+
 				resources[i].Roles[j].Claims[k] = Claim(claim)
 			}
 		}
