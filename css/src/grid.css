@@ -1,22 +1,17 @@
-:root {
-}
-
 /* 12 Grid ==================================================================================================== */
 /* Grid container */
-.grid-container {
+.grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr); /* Creates 12 columns */
     gap: var(--grid-gap); /* Space between grid items */
 }
 
-/* Grid item with fixed column span */
-[class*="col-"] {
-}
+/* General grid items styling*/
+[class*="col-"] {}
 
 /* Flexible grid item */
 .col-grow {
     grid-column: span 12; /* Take up remaining space */
-    min-width: 0; /* For text wrapping */
 }
 
 /* Generate column span classes */
@@ -35,32 +30,35 @@
 
 
 /* Flex Grid ==================================================================================================== */
-/* Grid container */
-.flex-container {
+/* Flex Grid container */
+.flex {
     display: flex;
     flex-wrap: wrap;
     gap: var(--grid-gap); /* Space between grid items */
-    margin: calc(-1 * var(--grid-gap)); /* Negative margin for alignment */
+    align-items: flex-start;
 }
 
-/* Grid item */
-.flex-item {
+/* Flex Grid item */
+.fi {
     flex: 1; /* Each item will grow */
-    min-width: 120px; /* Minimum width of the column, adjust as needed */
-    padding: var(--spacing); /* Adjust the padding to your preference */
-    margin: var(--grid-gap); /* Margin for alignment */
+    min-width: 16rem;
 }
 
 /* Optional fixed width classes */
-.flex-fix-1 { flex: 0 0 8.33%; }
-.flex-fix-2 { flex: 0 0 16.66%; }
-.flex-fix-3 { flex: 0 0 25%; }
-.flex-fix-4 { flex: 0 0 33.33%; }
-.flex-fix-5 { flex: 0 0 41.66%; }
-.flex-fix-6 { flex: 0 0 50%; }
-.flex-fix-7 { flex: 0 0 58.33%; }
-.flex-fix-8 { flex: 0 0 66.66%; }
-.flex-fix-9 { flex: 0 0 75%; }
-.flex-fix-10 { flex: 0 0 88.33%; }
-.flex-fix-11 { flex: 0 0 91.66%; }
-.flex-fix-12 { flex: 0 0 100%; }
+.ff1 { flex: 0 0 8.33%; }
+.ff2 { flex: 0 0 16.66%; }
+.ff3 { flex: 0 0 25%; }
+.ff4 { flex: 0 0 33.33%; }
+.ff5 { flex: 0 0 41.66%; }
+.ff6 { flex: 0 0 50%; }
+.ff7 { flex: 0 0 58.33%; }
+.ff8 { flex: 0 0 66.66%; }
+.ff9 { flex: 0 0 75%; }
+.ff10 { flex: 0 0 88.33%; }
+.ff11 { flex: 0 0 91.66%; }
+.ff12 { flex: 0 0 100%; }
+
+
+.flex-dir-col {
+    flex-direction: column;
+}

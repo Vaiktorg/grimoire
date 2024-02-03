@@ -3,7 +3,6 @@ package src
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"github.com/vaiktorg/grimoire/authentity/internal"
 	"github.com/vaiktorg/grimoire/authentity/src/models"
@@ -24,12 +23,12 @@ type Config struct {
 }
 
 type Authentity struct {
-	issuer   []byte
-	spice    gwt.Spice
-	l        log.ILogger
-	mux      *http.ServeMux
-	provider *DataProvider
-	mc       *gwt.MultiCoder[*gwt.Resources]
+	issuer []byte
+	mux    *http.ServeMux
+	mc     *gwt.MultiCoder[*gwt.Resources]
+
+	Logger   log.ILogger
+	Provider *DataProvider
 }
 
 const issuerName = "Authenitity"
@@ -40,12 +39,7 @@ func NewAuthentity(config *Config) *Authentity {
 		panic(err)
 	}
 
-	spice := gwt.Spice{
-		Salt:   []byte(uid.NewUID(8)),
-		Pepper: []byte(uid.NewUID(8)),
-	}
-
-	mc, err := gwt.NewMultiCoder[*gwt.Resources](spice)
+	mc, err := gwt.NewMultiCoder[*gwt.Resources]()
 	if err != nil {
 		panic(err)
 	}
@@ -53,9 +47,8 @@ func NewAuthentity(config *Config) *Authentity {
 	config.Logger.TRACE("Authentity entity " + issuerName + " is running")
 	auth := &Authentity{
 		issuer:   []byte(issuerName),
-		provider: NewDataProvider(db),
-		spice:    spice,
-		l:        config.Logger,
+		Provider: NewDataProvider(db),
+		Logger:   config.Logger,
 
 		mux: http.NewServeMux(),
 		mc:  mc,
@@ -73,15 +66,14 @@ func NewAuthentity(config *Config) *Authentity {
 func (a *Authentity) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	internal.SecurityMiddleware(a.mux).ServeHTTP(w, r)
 }
-
 func (a *Authentity) RegisterIdentity(pCtx context.Context, prof *models.Profile, acc *models.Account) error {
 	ctx, cancel := context.WithTimeout(pCtx, time.Minute)
 	defer cancel()
 
-	if _, err := a.provider.AccountsService.FindAccountByEmail(ctx, acc.Email); err == nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if _, err := a.Provider.AccountsService.FindAccountByEmail(ctx, acc.Email); err == nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return errors.New("email already being used for email: " + acc.Email)
 	}
-	if _, err := a.provider.AccountsService.FindAccountByUsername(ctx, acc.Username); err == nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if _, err := a.Provider.AccountsService.FindAccountByUsername(ctx, acc.Username); err == nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return errors.New("username already being used for user: " + acc.Username)
 	}
 
@@ -117,14 +109,14 @@ func (a *Authentity) RegisterIdentity(pCtx context.Context, prof *models.Profile
 		Resources: tok.Body,
 	}
 
-	return a.provider.IdentityService.Persist(ctx, identity)
+	return a.Provider.IdentityService.Persist(ctx, identity)
 }
 
 func (a *Authentity) LoginManual(pCtx context.Context, identifier, password string) (*gwt.GWT[*gwt.Resources], error) {
 	ctx, cancel := context.WithTimeout(pCtx, time.Minute)
 	defer cancel()
 
-	acc, err := a.provider.AccountsService.GetAccount(ctx, identifier, password)
+	acc, err := a.Provider.AccountsService.GetAccount(ctx, identifier, password)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +129,7 @@ func (a *Authentity) LoginManual(pCtx context.Context, identifier, password stri
 		return nil, errors.New("password does not match")
 	}
 
-	identity, err := a.provider.IdentityService.FetchIdentityByAccountID(ctx, acc.ID)
+	identity, err := a.Provider.IdentityService.FetchIdentityByAccountID(ctx, acc.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +151,7 @@ func (a *Authentity) LoginManual(pCtx context.Context, identifier, password stri
 	identity.Account.Signature = tok.Signature
 	tokenVal.Token = tok.Token
 
-	err = a.provider.IdentityService.Updates(ctx, identity)
+	err = a.Provider.IdentityService.Updates(ctx, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +165,7 @@ func (a *Authentity) LoginToken(tkn string) error {
 		return err
 	}
 
-	return tokenVal.ValidateGWT(a.spice)
+	return gwt.ValidateGWT(tokenVal)
 }
 func (a *Authentity) LogoutToken(pCtx context.Context, tkn string) error {
 	tokenVal, err := a.mc.Decode(tkn)
@@ -181,19 +173,19 @@ func (a *Authentity) LogoutToken(pCtx context.Context, tkn string) error {
 		return err
 	}
 
-	if err = tokenVal.ValidateGWT(a.spice); err != nil {
+	if err = gwt.ValidateGWT(tokenVal); err != nil {
 		return err
 	}
 
-	account, e := a.provider.AccountsService.FindAccountByUsername(pCtx, string(tokenVal.Header.Recipient))
+	account, e := a.Provider.AccountsService.FindAccountByUsername(pCtx, string(tokenVal.Header.Recipient))
 	if e != nil {
 		return errors.New("account not found")
 	}
 
 	account.Signature = ""
 
-	defer a.l.TRACE("account just logged out", account)
-	return a.provider.AccountsService.Updates(pCtx, account)
+	defer a.Logger.TRACE("account just logged out", account)
+	return a.Provider.AccountsService.Updates(pCtx, account)
 }
 
 func (a *Authentity) RefreshToken(tkn string) (gwt.Token, error) {
@@ -202,13 +194,13 @@ func (a *Authentity) RefreshToken(tkn string) (gwt.Token, error) {
 		return gwt.Token{}, err
 	}
 
-	if err = t.ValidateGWTHeader(func(header *gwt.Header) error {
+	if err = gwt.ValidateGWTHeader(t, func(header *gwt.Header) error {
 		if !bytes.Equal(header.Issuer, a.issuer) {
 			return errors.New("invalid token issuer")
 		}
 
-		return a.provider.AccountsService.AccountHasUsername(context.Background(), string(header.Recipient))
-	}, a.spice); err != nil {
+		return a.Provider.AccountsService.AccountHasUsername(context.Background(), string(header.Recipient))
+	}); err != nil {
 		return gwt.Token{}, err
 	}
 
@@ -220,93 +212,4 @@ func (a *Authentity) RefreshToken(tkn string) (gwt.Token, error) {
 		},
 		Body: t.Body,
 	})
-}
-
-func RegisterHandler(service *Authentity) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req models.RegisterRequest
-		var err error
-
-		if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, service.l.ERROR(err.Error()), http.StatusBadRequest)
-			return
-		}
-
-		err = service.RegisterIdentity(r.Context(), &req.Profile, &req.Account)
-		if err != nil {
-			http.Error(w, service.l.ERROR(err.Error()), http.StatusInternalServerError)
-			return
-		}
-
-		service.l.INFO(req.Account.Email + " has been registered")
-	}
-}
-func LoginHandler(service *Authentity) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req models.LoginRequest
-
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, service.l.ERROR(err.Error()), http.StatusBadRequest)
-			return
-		}
-
-		var identifier string
-		if req.Username != "" {
-			identifier = req.Username
-		} else if req.Email != "" {
-			identifier = req.Email
-		} else {
-			service.l.ERROR("invalid login.html request")
-			http.Error(w, "invalid login.html request", http.StatusBadRequest)
-			return
-		}
-
-		if req.Password == "" {
-			service.l.ERROR("password is required")
-			http.Error(w, "password is required", http.StatusBadRequest)
-			return
-		}
-
-		tokenValue, err := service.LoginManual(r.Context(), identifier, req.Password)
-		if err != nil {
-			service.l.ERROR(err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		http.SetCookie(w, &http.Cookie{
-			Name:    CookieTokenName,
-			Value:   tokenValue.Token,
-			Expires: tokenValue.Header.Expires,
-			MaxAge:  0,
-		})
-
-		service.l.INFO(req.Email + "has logged in")
-	}
-}
-func LogoutHandler(service *Authentity) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tokenCookie, err := r.Cookie(CookieTokenName)
-		if err != nil {
-			service.l.ERROR(err.Error())
-			http.Error(w, "token not found", http.StatusUnauthorized)
-			return
-		}
-
-		err = service.LogoutToken(r.Context(), tokenCookie.Value)
-		if err != nil {
-			service.l.ERROR(err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		http.SetCookie(w, &http.Cookie{
-			Name:    CookieTokenName,
-			Value:   "",
-			Path:    "/",
-			Expires: time.Unix(0, 0),
-		})
-
-		service.l.INFO("token: " + tokenCookie.Value + " has logged out")
-	}
 }

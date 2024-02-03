@@ -11,11 +11,11 @@ var (
 )
 
 func (a *Authentity) Migrate() error {
-	if a.provider.migrator.HasTable(entities.Identity{}) {
+	if a.Provider.migrator.HasTable(entities.Identity{}) {
 		return AlreadyExistError
 	}
 
-	return a.provider.migrator.AutoMigrate(
+	return a.Provider.migrator.AutoMigrate(
 		&entities.Identity{
 			Entity:  entities.Entity{},
 			Profile: &entities.Profile{},

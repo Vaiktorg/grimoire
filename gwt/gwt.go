@@ -6,6 +6,7 @@ import (
 	"crypto/sha512"
 	_ "embed"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"github.com/vaiktorg/grimoire/util"
@@ -13,23 +14,23 @@ import (
 	"time"
 )
 
-//go:embed res/salt.hash
+//go:embed salt.hash
 var salt []byte
 
-//go:embed res/pepper.hash
+//go:embed pepper.hash
 var pepper []byte
 
-//go:embed res/key.hash
+//go:embed key.hash
 var HashKey []byte
 
 type Spice struct {
-	Salt   [16]byte
-	Pepper [16]byte
+	Salt   []byte
+	Pepper []byte
 }
 
 var spice = Spice{
-	Salt:   [16]byte(salt),
-	Pepper: [16]byte(pepper),
+	Salt:   salt,
+	Pepper: pepper,
 }
 
 // ====================================================================================================
@@ -78,7 +79,7 @@ type Token struct {
 
 	// ___.OOO  Last section of Token.
 	// Only accessible when decoded from token string
-	Signature []byte
+	Signature string
 }
 
 func (m *MultiCoder[T]) Encode(tok *GWT[T]) (ret Token, err error) {
@@ -106,7 +107,7 @@ func (m *MultiCoder[T]) Encode(tok *GWT[T]) (ret Token, err error) {
 			b64value,
 			b64signature,
 		}, "."),
-		Signature: hashSignature}, nil
+		Signature: hex.EncodeToString(hashSignature)}, nil
 }
 func (m *MultiCoder[T]) Decode(token string) (*GWT[T], error) {
 	if token == "" {
@@ -142,29 +143,14 @@ func (m *MultiCoder[T]) Decode(token string) (*GWT[T], error) {
 	return ret, nil
 }
 
-//	func XORText(str []byte) (hash []byte) {
-//		lut := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-//
-//		hash = make([]byte, hashLen)
-//		// Convert each character to a byte
-//		for i, c := range str {
-//			hash[i] = lut[c%byte(len(lut))]
-//		}
-//
-//		return hash
-//	}
-
 func GenSignature(key []byte, tokenBuff []byte) ([]byte, error) {
 	m := hmac.New(sha512.New, key)
 
 	//Generate gwt Signature from decoded payload
-	_, err := m.Write(tokenBuff)
+	_, err := m.Write(append(tokenBuff, append(spice.Salt[:], spice.Pepper[:]...)...))
 	if err != nil {
 		return nil, errors.New(ErrorInvalidToken)
 	}
-
-	m.Sum(spice.Salt[:])
-	m.Sum(spice.Pepper[:])
 
 	return m.Sum(nil), nil
 }
@@ -240,7 +226,7 @@ func ValidateSignature[T any](gwt *GWT[T]) error {
 		return err
 	}
 
-	if !bytes.Equal(nSigBuff, sigBuff) {
+	if !hmac.Equal(nSigBuff, sigBuff) {
 		return errors.New(ErrorInvalidToken)
 	}
 

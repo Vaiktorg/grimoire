@@ -11,12 +11,11 @@ import (
 )
 
 const (
-	dir        = "."                              // Replace with your directory path
-	outputFile = "/authentity/res/packed.min.css" // Name of the output file
+	dir        = "."                   // Replace with your directory path
+	outputFile = "dist/packed.min.css" // Name of the output file
 )
 
 func main() {
-
 	// Create a minifier instance
 	m := minify.New()
 	m.AddFunc("text/css", css.Minify)

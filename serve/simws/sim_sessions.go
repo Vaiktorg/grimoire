@@ -26,7 +26,7 @@ type ConnSession struct {
 
 func NewSimConnSessions() *SimSessions {
 	return &SimSessions{
-		GlobalId: []byte(uid.NewUID(TokenLen)),
+		GlobalId: uid.NewUID(TokenLen).Bytes(),
 		sessions: store.NewRepo[uid.UID, *ConnSession](),
 	}
 }

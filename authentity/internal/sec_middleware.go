@@ -6,16 +6,19 @@ import (
 
 func SecurityMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set Content Security Policy
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; object-src 'none';")
+		// Set the Content-Security-Policy header to only allow resources from the same origin
+		w.Header().Set("Content-Security-Policy", "default-src 'self'")
 
-		// Set X-Content-Type-Options
+		// Set the X-Content-Type-Options to prevent the browser from MIME-sniffing a response away from the declared content-type
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 
-		// Set X-Frame-Options
-		w.Header().Set("X-Frame-Options", "DENY")
+		// Set the Strict-Transport-Security header to enforce secure (HTTP over SSL/TLS) connections to the server
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 
-		// Set X-XSS-Protection
+		// Set the X-Frame-Options header to provide clickjacking protection
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+
+		// Set the X-XSS-Protection header to enable the Cross-site scripting (XSS) filter in the browser
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 
 		// Call the next handler, which can be another middleware in the chain, or the final handler.

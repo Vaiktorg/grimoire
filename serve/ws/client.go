@@ -2,7 +2,6 @@ package ws
 
 import (
 	"context"
-	"github.com/vaiktorg/grimoire/serve/simws"
 	"github.com/vaiktorg/grimoire/uid"
 	"github.com/vaiktorg/grimoire/util"
 	"nhooyr.io/websocket"
@@ -36,7 +35,7 @@ type Client struct {
 }
 
 func NewClient(conn *websocket.Conn) (*Client, error) {
-	id, err := uid.NewSecureUID(simws.TokenLen)
+	id, err := uid.NewSecure512()
 	if err != nil {
 		return nil, err
 	}

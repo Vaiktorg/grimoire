@@ -18,7 +18,7 @@ var TestAccount = &gwt.GWT[*gwt.Resources]{
 		Recipient: []byte("Vaiktorg"),
 		Expires:   time.Now().Add(gwt.TokenExpireTime),
 	},
-	Body: gwt.NewResources(uid.NewUID(gwt.FixedIDLen)),
+	Body: gwt.NewResources(uid.New()),
 }
 
 func TestEncodeGWT(t *testing.T) {
@@ -28,7 +28,7 @@ func TestEncodeGWT(t *testing.T) {
 		t.FailNow()
 	}
 
-	if token.Signature == nil || len(token.Signature) == 0 {
+	if token.Signature == "" {
 		t.Errorf("token signature is empty")
 		t.FailNow()
 	}

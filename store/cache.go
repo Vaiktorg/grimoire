@@ -32,7 +32,7 @@ type Cache[T any] struct {
 func NewCache[T any](name string) *Cache[T] {
 	return &Cache[T]{
 		appName:       name,
-		runId:         []byte(uid.NewUID(8)),
+		runId:         []byte(uid.New()),
 		logFilesPaths: make(map[string][]string),
 		buff:          make([]T, CurrentLen),
 		isFull:        false,

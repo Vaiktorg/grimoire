@@ -1,0 +1,33 @@
+@import "src/layout.css";
+@import "src/nav.css";
+@import "src/grid.css";
+@import "src/form.css";
+@import "src/content.css";
+@import "src/mods.css";
+@import "src/anims.css";
+@import "src/print.css";
+
+:root {
+
+    --rem: 1em;
+    --font-size: 1em;
+    --h1-fontsize: 3em;
+    --h2-fontsize: 2.2em;
+    --h3-fontsize: 2em;
+    --h4-fontsize: 1.2em;
+    --h5-fontsize: var(--font-size);
+
+    --spacing: var(--font-size);
+    --grid-gap: 2em;
+
+    --white: #000;
+    --lgrey: #666;
+    --dgrey: #999;
+    --black: #fff;
+
+    --accent: red;
+
+    --bgImg: url(res/gwt.png);
+}
+
+

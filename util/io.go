@@ -22,7 +22,7 @@ type MultiCoder[T any] struct {
 }
 
 func NewMultiCoder[T any]() (*MultiCoder[T], error) {
-	block, err := aes.NewCipher(AESKey)
+	block, err := aes.NewCipher(AESKey.Bytes())
 	if err != nil {
 		return nil, err
 	}

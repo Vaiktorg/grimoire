@@ -4,107 +4,41 @@ package gwt
 type ResourceType string
 
 const (
-	NetworkPublicEndpoints   ResourceType = "networkPublicEndpoints"
-	NetworkAPIGateway        ResourceType = "networkAPIGateway"
-	NetworkWebhooks          ResourceType = "networkWebhooks"
-	NetworkInternalEndpoints ResourceType = "networkInternalEndpoints"
-	NetworkDatabaseAPI       ResourceType = "networkDatabaseAPI"
-	NetworkInternalServices  ResourceType = "networkInternalServices"
-
-	DataManagementDatabases         ResourceType = "dataManagementDatabases"
-	DataManagementUserData          ResourceType = "dataManagementUserData"
-	DataManagementAnalyticsData     ResourceType = "dataManagementAnalyticsData"
-	DataManagementFileStorage       ResourceType = "dataManagementFileStorage"
-	DataManagementMedia             ResourceType = "dataManagementMedia"
-	DataManagementDocumentsArchives ResourceType = "dataManagementDocumentsArchives"
-
-	UIAdminDashboard        ResourceType = "uiAdminDashboard"
-	UIConfigurationSettings ResourceType = "uiConfigurationSettings"
-	UIUserManagement        ResourceType = "uiUserManagement"
-	UIPublicWebsite         ResourceType = "uiPublicWebsite"
-	UIHomePage              ResourceType = "uiHomePage"
-	UIContactForm           ResourceType = "uiContactForm"
-	UIBlogArticles          ResourceType = "uiBlogArticles"
-
-	SecMonitorFirewallSettings ResourceType = "secMonitorFirewallSettings"
-	SecMonitorAccessLogs       ResourceType = "secMonitorAccessLogs"
-	SecMonitorSecurityAlerts   ResourceType = "secMonitorSecurityAlerts"
-
-	SysAdminServerManagement     ResourceType = "sysAdminServerManagement"
-	SysAdminVirtualMachines      ResourceType = "sysAdminVirtualMachines"
-	SysAdminContainerInstances   ResourceType = "sysAdminContainerInstances"
-	SysAdminNetworkConfiguration ResourceType = "sysAdminNetworkConfiguration"
-	SysAdminDNSSettings          ResourceType = "sysAdminDNSSettings"
-	SysAdminSSLCertificates      ResourceType = "sysAdminSSLCertificates"
-
-	DevToolsSourceCodeRepositories     ResourceType = "devToolsSourceCodeRepositories"
-	DevToolsCICD                       ResourceType = "devToolsCICD"
-	DevToolsTestingStagingEnvironments ResourceType = "devToolsTestingStagingEnvironments"
-
-	ThirdPartyCloudServiceProviders ResourceType = "thirdPartyCloudServiceProviders"
-	ThirdPartyExternalAPIs          ResourceType = "thirdPartyExternalAPIs"
-	ThirdPartyIntegrationPlatforms  ResourceType = "thirdPartyIntegrationPlatforms"
+	Network         ResourceType = "network"
+	DataManagement               = "data_management"
+	UserInterface                = "user_interface"
+	SecurityMonitor              = "security_monitor"
+	SystemAdmin                  = "system_admin"
+	DevTools                     = "dev_tools"
+	ThirdParty                   = "third_party"
 )
 
-var defaultResourceTypeIdx = map[ResourceType]byte{
-	NetworkPublicEndpoints:   0x01,
-	NetworkAPIGateway:        0x02,
-	NetworkWebhooks:          0x03,
-	NetworkInternalEndpoints: 0x04,
-	NetworkDatabaseAPI:       0x05,
-	NetworkInternalServices:  0x06,
-
-	DataManagementDatabases:         0x07,
-	DataManagementUserData:          0x08,
-	DataManagementAnalyticsData:     0x09,
-	DataManagementFileStorage:       0x10,
-	DataManagementMedia:             0x11,
-	DataManagementDocumentsArchives: 0x12,
-
-	UIAdminDashboard:        0x13,
-	UIConfigurationSettings: 0x14,
-	UIUserManagement:        0x15,
-	UIPublicWebsite:         0x16,
-	UIHomePage:              0x17,
-	UIContactForm:           0x18,
-	UIBlogArticles:          0x19,
-
-	SecMonitorFirewallSettings: 0x20,
-	SecMonitorAccessLogs:       0x21,
-	SecMonitorSecurityAlerts:   0x22,
-
-	SysAdminServerManagement:     0x23,
-	SysAdminVirtualMachines:      0x24,
-	SysAdminContainerInstances:   0x25,
-	SysAdminNetworkConfiguration: 0x26,
-	SysAdminDNSSettings:          0x27,
-	SysAdminSSLCertificates:      0x28,
-
-	DevToolsSourceCodeRepositories:     0x29,
-	DevToolsCICD:                       0x30,
-	DevToolsTestingStagingEnvironments: 0x31,
-
-	ThirdPartyCloudServiceProviders: 0x32,
-	ThirdPartyExternalAPIs:          0x33,
-	ThirdPartyIntegrationPlatforms:  0x34,
+func (r ResourceType) String() string {
+	return string(r)
 }
+
+var defaultResourceTypeIdx = map[ResourceType]int{}
 
 // Roles ====================================================================================================
 
 type RoleType string
 
+func (r RoleType) String() string {
+	return string(r)
+}
+
 // RoleType default constants.
 const (
-	Owner RoleType = "owner" // Owner (Company)
-	Admin          = "admin" // Administrator
-	Dev            = "dev"   // Developer
-	Mod            = "mod"   // Moderator
-	Guest          = "guest" // Guest
-	User           = "user"  // User
+	Owner RoleType = "own" // Owner (Company)
+	Admin          = "adm" // Administrator
+	Dev            = "dev" // Developer
+	Mod            = "mod" // Moderator
+	Guest          = "gst" // Guest
+	User           = "usr" // User
 )
 
-func (rt RoleType) Hierarchy(compare RoleType) bool {
-	t1, ok1 := defaultRoleTypeIdx[rt]
+func (r RoleType) Hierarchy(compare RoleType) bool {
+	t1, ok1 := defaultRoleTypeIdx[r]
 	t2, ok2 := defaultRoleTypeIdx[compare]
 
 	if !ok1 || !ok2 {
@@ -124,13 +58,11 @@ var DefaultRoles = map[RoleType]Role{
 	User:  {Type: User, Permissions: Read},
 }
 
-var defaultRoleTypeIdx = map[RoleType]byte{
-	Owner: 0x01,
-	Admin: 0x02,
-	Dev:   0x03,
-	Mod:   0x04,
-	Guest: 0x05,
-	User:  0x06,
-
-	// Add more role types as needed
+var defaultRoleTypeIdx = map[RoleType]int{
+	Owner: 0,
+	Admin: 1,
+	Dev:   2,
+	Mod:   3,
+	Guest: 4,
+	User:  5,
 }

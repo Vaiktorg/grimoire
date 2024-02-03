@@ -22,8 +22,8 @@ func main() {
 		Handler: src.NewAuthentity(&src.Config{
 			Issuer: "Authentity",
 			GSpice: gwt.Spice{
-				Salt:   []byte(uid.New()),
-				Pepper: []byte(uid.New()),
+				Salt:   uid.New().Bytes(),
+				Pepper: uid.New().Bytes(),
 			},
 			Logger: logger.NewServiceLogger(&log.Config{
 				CanPrint:    true,

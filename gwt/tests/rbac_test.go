@@ -8,12 +8,12 @@ import (
 )
 
 func TestSerializationDeserialization(t *testing.T) {
-	original := gwt.NewResources(uid.NewUID(gwt.FixedIDLen))
+	original := gwt.NewResources(uid.New())
 
-	res1 := gwt.NewResource(gwt.NetworkDatabaseAPI, gwt.DefaultRoles[gwt.Dev])
+	res1 := gwt.NewResource(gwt.DataManagement, gwt.DefaultRoles[gwt.Dev])
 	original.AddResource(res1)
 
-	res2 := gwt.NewResource(gwt.DevToolsCICD, gwt.DefaultRoles[gwt.Dev])
+	res2 := gwt.NewResource(gwt.Network, gwt.DefaultRoles[gwt.Dev])
 	original.AddResource(res2)
 
 	// Serialize

@@ -10,72 +10,77 @@ import (
 
 func (a *Authentity) registerMux() {
 
+	a.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "tmpl/home.html")
+	})
 	a.mux.HandleFunc("/register", RegisterHandler(a))
 	a.mux.HandleFunc("/login", LoginHandler(a))
 	a.mux.HandleFunc("/logout", LogoutHandler(a))
 
-	a.mux.Handle("/account", a.AuthenticationAndAuthorizationMiddleware(
-		gwt.DataManagementUserData,
+	a.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("res/"))))
+
+	a.mux.Handle("/account", a.AuthMiddleware(
+		gwt.DataManagement,
 		gwt.DefaultRoles[gwt.Owner],
-		handlers.AccountHandler(&a.provider.AccountsService)),
+		handlers.AccountHandler(&a.Provider.AccountsService)),
 	)
 
-	a.mux.Handle("/accounts", a.AuthenticationAndAuthorizationMiddleware(
-		gwt.DataManagementUserData,
+	a.mux.Handle("/accounts", a.AuthMiddleware(
+		gwt.DataManagement,
 		gwt.DefaultRoles[gwt.Owner],
-		handlers.AccountsHandler(&a.provider.AccountsService)),
+		handlers.AccountsHandler(&a.Provider.AccountsService)),
 	)
 
-	a.mux.Handle("/profile", a.AuthenticationAndAuthorizationMiddleware(
-		gwt.DataManagementUserData,
+	a.mux.Handle("/profile", a.AuthMiddleware(
+		gwt.DataManagement,
 		gwt.DefaultRoles[gwt.Owner],
-		handlers.ProfileHandler(&a.provider.ProfileService)),
+		handlers.ProfileHandler(&a.Provider.ProfileService)),
 	)
 
-	a.mux.Handle("/profiles", a.AuthenticationAndAuthorizationMiddleware(
-		gwt.DataManagementUserData,
+	a.mux.Handle("/profiles", a.AuthMiddleware(
+		gwt.DataManagement,
 		gwt.DefaultRoles[gwt.Owner],
-		handlers.ProfilesHandler(&a.provider.ProfileService)),
+		handlers.ProfilesHandler(&a.Provider.ProfileService)),
 	)
 
-	a.mux.Handle("/identity", a.AuthenticationAndAuthorizationMiddleware(
-		gwt.DataManagementUserData,
+	a.mux.Handle("/identity", a.AuthMiddleware(
+		gwt.DataManagement,
 		gwt.DefaultRoles[gwt.Owner],
-		handlers.IdentityHandler(&a.provider.IdentityService)),
+		handlers.IdentityHandler(&a.Provider.IdentityService)),
 	)
 
-	a.mux.Handle("/identities", a.AuthenticationAndAuthorizationMiddleware(
-		gwt.DataManagementUserData,
+	a.mux.Handle("/identities", a.AuthMiddleware(
+		gwt.DataManagement,
 		gwt.DefaultRoles[gwt.Owner],
-		handlers.IdentitiesHandler(&a.provider.IdentityService)),
+		handlers.IdentitiesHandler(&a.Provider.IdentityService)),
 	)
 
-	a.l.TRACE("mux paths registered")
+	a.Logger.TRACE("mux paths registered")
 }
 
 func TokenMiddleware(service *Authentity, next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tokenCookie, err := r.Cookie(CookieTokenName)
 		if err != nil {
-			service.l.ERROR("token not found")
+			service.Logger.ERROR("token not found")
 			http.Error(w, "token not found", http.StatusUnauthorized)
 			return
 		}
 
 		if tokenCookie.Value == "" {
-			service.l.ERROR("token value not found")
+			service.Logger.ERROR("token value not found")
 			http.Error(w, "token value not found", http.StatusUnauthorized)
 			return
 		}
 
 		if time.Now().UTC().After(tokenCookie.Expires) {
-			service.l.ERROR("token expired")
+			service.Logger.ERROR("token expired")
 			http.Error(w, "token expired", http.StatusUnauthorized)
 			return
 		}
 
 		if err = service.LoginToken(tokenCookie.Value); err != nil {
-			service.l.ERROR(err.Error(), "Redirecting to /login.html")
+			service.Logger.ERROR(err.Error(), "Redirecting to /login.html")
 			http.Redirect(w, r, "/auth/login.html", http.StatusTemporaryRedirect)
 			return
 		}
@@ -83,7 +88,7 @@ func TokenMiddleware(service *Authentity, next http.Handler) http.HandlerFunc {
 		ctx := context.WithValue(r.Context(), "token", tokenCookie.Value)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
-		service.l.INFO("token: " + tokenCookie.Value + " has authed token")
+		service.Logger.INFO("token: " + tokenCookie.Value + " has authed token")
 	}
 }
 func ResourceAccessMiddleware(service *Authentity, resType gwt.ResourceType, roles ...gwt.Role) func(next http.Handler) http.HandlerFunc {
@@ -110,7 +115,7 @@ func ResourceAccessMiddleware(service *Authentity, resType gwt.ResourceType, rol
 				return
 			}
 
-			service.l.INFO("Resource Access", tok.Body.Resources)
+			service.Logger.INFO("Resource Access", tok.Body.Resources)
 
 			// User has the required access, proceed with the request
 			next.ServeHTTP(w, r)
@@ -118,6 +123,6 @@ func ResourceAccessMiddleware(service *Authentity, resType gwt.ResourceType, rol
 	}
 }
 
-func (a *Authentity) AuthenticationAndAuthorizationMiddleware(resType gwt.ResourceType, role gwt.Role, next http.Handler) http.Handler {
+func (a *Authentity) AuthMiddleware(resType gwt.ResourceType, role gwt.Role, next http.Handler) http.Handler {
 	return TokenMiddleware(a, ResourceAccessMiddleware(a, resType, role)(next))
 }

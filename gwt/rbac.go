@@ -16,10 +16,10 @@ var (
 
 func init() {
 	for k, v := range defaultResourceTypeIdx {
-		indexToResourceType[v] = k
+		indexToResourceType[byte(v)] = k
 	}
 	for k, v := range defaultRoleTypeIdx {
-		indexToRoleType[v] = k
+		indexToRoleType[byte(v)] = k
 	}
 }
 
@@ -32,7 +32,7 @@ type Resources struct {
 
 func NewResources(userID uid.UID) *Resources {
 	return &Resources{
-		UserID: userID,
+		UserID: []byte(userID),
 	}
 }
 
@@ -55,9 +55,6 @@ func (res *Resources) HasAccess(resourceType ResourceType, role ...Role) bool {
 	}
 
 	return false
-}
-func (res *Resources) String() string {
-	return string(res.Serialize())
 }
 func (res *Resources) Serialize() []byte {
 	buffer := new(bytes.Buffer)
@@ -143,7 +140,7 @@ func (res *Resources) Deserialize(data []byte) error {
 			// Len Claims
 			numClaims, _ := buffer.ReadByte()
 
-			resources[i].Roles[j].Claims = make([]Claim, numClaims)
+			resources[i].Roles[j].Claims = make(map[RoleType]Claim, numClaims)
 			for k := range resources[i].Roles[j].Claims {
 				claimLen, _ := buffer.ReadByte()
 
@@ -207,11 +204,15 @@ func (res *Resources) GetResourceByType(resType ResourceType) []*Resource {
 	return byType
 }
 
+func (res *Resources) String() string {
+	return string(res.Serialize())
+}
+
 func resourceTypeToIndex(resType ResourceType) byte {
-	return defaultResourceTypeIdx[resType]
+	return byte(defaultResourceTypeIdx[resType])
 }
 func roleTypeToIndex(roleType string) byte {
-	return defaultRoleTypeIdx[RoleType(roleType)]
+	return byte(defaultRoleTypeIdx[RoleType(roleType)])
 }
 
 // Resource ...
@@ -278,9 +279,9 @@ func (res *Resource) GetRole(nRole RoleType) []Role {
 // Role
 // ====================================================================================================
 type Role struct {
-	Type        RoleType   // Type: RoleType defines the role of a user.
-	Permissions Permission // Permissions: What this role is able to do as a bitwise flag. Ex: Write, Read, Edit, Delete
-	Claims      []Claim    // Claims: User specific information
+	Type        RoleType           // Type: RoleType defines the role of a user.
+	Permissions Permission         // Permissions: What this role is able to do as a bitwise flag. Ex: Write, Read, Edit, Delete
+	Claims      map[RoleType]Claim // Claims: User specific information
 }
 
 func (r *Role) HasPermission(permission Permission) bool {
@@ -315,9 +316,9 @@ func (c Claim) String() string {
 
 // ====================================================================================================
 
-func (r *Role) AddClaim(k string, v string) {
-	if !r.HasClaim(k) {
-		r.Claims = append(r.Claims, Claim(k+"."+v))
+func (r *Role) AddClaim(k RoleType, v string) {
+	if _, ok := r.Claims[k]; !ok {
+		r.Claims[k] = Claim(k.String() + "." + v)
 	}
 }
 func (r *Role) HasClaim(key string) bool {
@@ -346,12 +347,9 @@ func (r *Role) ReplaceClaim(nClaim Claim) {
 		}
 	}
 }
-func (r *Role) DeleteClaim(key string) {
-	for idx, claim := range r.Claims {
-		if claim.Key() == key {
-			r.Claims = append(r.Claims[:idx], r.Claims[idx+1:]...)
-			return
-		}
+func (r *Role) DeleteClaim(key RoleType) {
+	if _, ok := r.Claims[key]; ok {
+		delete(r.Claims, key)
 	}
 }
 

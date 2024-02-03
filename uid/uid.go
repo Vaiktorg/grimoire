@@ -8,7 +8,7 @@ package uid
 
 import (
 	cr "crypto/rand"
-	"fmt"
+	"encoding/hex"
 	"math/rand"
 	"time"
 )
@@ -33,7 +33,7 @@ func init() {
 	src.Seed(time.Now().UnixNano())
 }
 
-type UID []byte
+type UID string
 
 func New() UID {
 	return newBytes(16, AlphaNumeric)
@@ -43,20 +43,28 @@ func New() UID {
 func NewUID(n int) UID {
 	return newBytes(n, AlphaNumeric)
 }
-func NewSecureUID(n int) (UID, error) {
+func NewSecure512() (UID, error) {
 	// Create a byte slice of the desired length
-	randomBytes := make([]byte, n)
+	randomBytes := make([]byte, 64)
 
 	_, err := cr.Read(randomBytes)
 	if err != nil {
-		return UID(""), err
+		return "", err
 	}
 
 	// Convert to a base64 URL-safe string
-	return []byte(fmt.Sprintf("%X", randomBytes[:n])), nil
+	return UID(hex.EncodeToString(randomBytes[:])), nil
 }
 func NewUIDSrc(n int, set string) UID {
-	return newBytes(n*2, set)
+	return newBytes(n, set)
+}
+
+func (u UID) Bytes() []byte {
+	return []byte(u)
+}
+
+func (u UID) String() string {
+	return string(u)
 }
 
 // NewBytes takes letterBytes from parameters and returns random string of length n.
