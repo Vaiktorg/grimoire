@@ -1,0 +1,34 @@
+{{define "content"}}
+<header class="w50 c">
+    <a href="/"> <img class="w25 c" src="../../authentity/res/logo.svg" alt="fingerprint, key and shield-lock icons" ></a>
+    <h4 class="c ct">Simple Web Identity</h4>
+</header>
+
+<form class="w50 c" method="post">
+    <fieldset class="grid gr2">
+        <legend>Login</legend>
+            <label class="col-12" for="useremail">Username or Email
+                <input type="text" name="useremail" id="useremail" required>
+            </label>
+
+            <label class="col-12" for="pass">Password
+                <input type="password" name="pass" id="pass" required>
+            </label>
+
+            <label class="col-12" for="passport">Passport
+                <input type="file" name="passport" id="passport" required accept="image/png">
+            </label>
+
+            <div class="grid col-6 ai-c">
+                <label class="col-12" for="remember">Remember Me<input type="checkbox" name="remember" id="remember"/></label>
+                <label class="col-12" for="remember"><a href="#">Forgot Password</a></label>
+            </div>
+
+            <div class="col-6 grid js-e">
+                <button class="col-6" type="Reset">Reset</button>
+                <button class="col-6" type="Submit">Submit</button>
+            </div>
+    </fieldset>
+</form>
+
+{{end}}

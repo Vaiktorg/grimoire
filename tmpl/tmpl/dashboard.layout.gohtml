@@ -1,0 +1,50 @@
+{{- /*gotype: github.com/vaiktorg/grimoire/site.HTMLData*/ -}}
+{{define "dashboard"}}
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+        <link type="text/css" rel="stylesheet" href="{{.Head.CSS}}">
+
+        <link type="img/png" rel="icon" href="{{.Head.Icon}}">
+
+        <title>{{.Head.Title}}</title>
+    </head>
+
+    <body class="grid rg0 ac-sb">
+
+    <nav class="col-12 grid ai-c ji-c">
+        <a class="col-9 left" href="/">
+            {{if .Menu.MenuIcon}}
+                <img class="" src="{{.Menu.MenuIcon}}" alt="" />
+            {{else if .Menu.MenuText}}
+                <h3>{{.Menu.MenuText}}</h3>
+            {{end}}
+        </a>
+
+        {{range $lbl, $url := .Menu}}
+            <a  class="col-1" href="{{$url}}">Docs</a>
+        {{end}}
+    </nav>
+
+    <nav class="col-1 grid ac-s ji-e gr1">
+        {{range $group, $items := .Nav}}
+            <header class="col-12 js-s">{{$group}}</header>
+                {{range $lbl, $item :=  $items}}
+                    <a class="col-12" href="{{$item}}">{{$lbl}}</a>
+                {{end}}
+        {{end}}
+    </nav>
+
+    <main class="col-11 p1 grid">
+        {{template "content" .Body.Main}}
+    </main>
+
+    <footer class="col-12 ct">
+        {{.Body.Footer}}
+        <p>Dev with &hearts; by <a href="https://vaiktorg.dev/">VKTRG</a></p>
+    </footer>
+
+    </body>
+
+    <script src="{{.Head.JS}}"></script>
+{{end}}

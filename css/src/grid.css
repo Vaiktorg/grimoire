@@ -1,0 +1,69 @@
+/* 12 Grid ==================================================================================================== */
+/* Grid container */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr); /* Creates 12 columns */
+}
+
+body.grid{
+    height: 100vh;
+    grid-template-rows: auto 2fr auto;
+}
+
+/* General grid items styling*/
+[class*="col-"] {
+
+}
+
+/* Flexible grid item */
+.col-grow {
+    grid-column: span 12; /* Take up remaining space */
+}
+
+/* Generate column span classes */
+.col-1 { grid-column: span 1; }
+.col-2 { grid-column: span 2; }
+.col-3 { grid-column: span 3; }
+.col-4 { grid-column: span 4; }
+.col-5 { grid-column: span 5; }
+.col-6 { grid-column: span 6; }
+.col-7 { grid-column: span 7; }
+.col-8 { grid-column: span 8; }
+.col-9 { grid-column: span 9; }
+.col-10 { grid-column: span 10; }
+.col-11 { grid-column: span 11; }
+.col-12 { grid-column: span 12; }
+
+
+/* Flex Grid ==================================================================================================== */
+/* Flex Grid container */
+.flex {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--grid-gap); /* Space between grid items */
+}
+
+/* Flex Grid item */
+.fi {
+    flex: 1; /* Each item will grow */
+    min-width: var(--spacing); /* Minimum width */
+}
+
+/* Optional fixed width classes */
+.ff1 { flex: 0 0 8.33%; }
+.ff2 { flex: 0 0 16.66%; }
+.ff3 { flex: 0 0 25%; }
+.ff4 { flex: 0 0 33.33%; }
+.ff5 { flex: 0 0 41.66%; }
+.ff6 { flex: 0 0 50%; }
+.ff7 { flex: 0 0 58.33%; }
+.ff8 { flex: 0 0 66.66%; }
+.ff9 { flex: 0 0 75%; }
+.ff10 { flex: 0 0 88.33%; }
+.ff11 { flex: 0 0 91.66%; }
+.ff12 { flex: 0 0 100%; }
+
+
+.flex-dir-col {
+    flex-direction: column;
+}

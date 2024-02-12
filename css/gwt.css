@@ -1,0 +1,53 @@
+@import "src/layout.css";
+@import "src/nav.css";
+@import "src/grid.css";
+@import "src/form.css";
+@import "src/content.css";
+@import "src/anims.css";
+@import "src/print.css";
+@import "src/mods.css";
+@import "res/ShareTechMono-Regular.ttf";
+
+@font-face {
+    font-family: 'Share Tech Mono';
+    src: url('res/ShareTechMono-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/*
+GopherBlue  #00ADD8
+Light Blue  #5DC9E2
+Fuchsia     #CE3262
+AQUA        #00A29C
+BLACK       #000000
+YELLOW      #FDDD00
+ */
+
+:root {
+    --rem: 1em;
+    --font-size: 1em;
+    --h1-fontsize: 3em;
+    --h2-fontsize: 2.2em;
+    --h3-fontsize: 2em;
+    --h4-fontsize: 1.2em;
+    --h5-fontsize: var(--font-size);
+
+    --font-color: var(--primary);
+    --font-family: "Share Tech Mono", monospace;
+    --bg-color: var(--secondary);
+
+    --spacing: var(--font-size);
+    --grid-gap: 2em;
+
+    --primary: #fff;
+    --secondary: #000;
+    --accent: #CE3262;
+
+    --lgrey: #999;
+    --dgrey: #666;
+
+    --bgImg: url(../res/gwt_bg.png);
+}
+
+

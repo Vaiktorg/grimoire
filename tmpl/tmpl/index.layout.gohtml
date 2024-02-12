@@ -1,0 +1,52 @@
+{{- /*gotype: github.com/vaiktorg/grimoire/site.HTMLData*/ -}}
+{{define "index"}}
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+        <link type="text/css" rel="stylesheet" href="{{.Head.CSS}}">
+        <link type="img/png" rel="icon" href="{{.Head.Icon}}">
+
+        <title>Authentity</title>
+    </head>
+
+
+    <body class="grid gr16">
+
+    <nav class="grid col-12 w25 js-e" nav-dir="h" >
+        <a class="col-3 " href="/site/tmpl/index.layout.gohtml">Home</a>
+        <a class="col-3 " href="/authentity/tmpl/docs.html">Docs</a>
+        <a class="col-3 " href="/site/tmpl/login.html.html">Login</a>
+        <a class="col-3 " href="/authentity/tmpl/signup.html">Sign Up</a>
+    </nav>
+
+    <main class="col-12 grid gr16">
+        {{template "content" .Body.Main}}
+    </main>
+
+
+    <footer class="grid col-12">
+        <!--// To Half -->
+        <p class="col-6">Blog | Legal | FAQ | Support</p>
+        <img class="col-6 i32" src="../../authentity/res/github-mark.svg" alt="github"/>
+
+        <!--// Bottom Half -->
+        <div class="col-6">
+            <p>Privacy Policy | Terms1 of Service | Cookie Policy</p>
+            <p>Authentity &copy; 2024, All rights reserved.</p>
+            <p>Developed with <3 by <a href="https://vaiktorg.dev/">VKTRG</a></p>
+        </div>
+
+        <div class="col-6 ">
+            <p>7205 Greenfelder Inlet</p>
+            <p>Port Christel</p>
+            <p>DE 14891-9782</p>
+        </div>
+    </footer>
+
+
+    </body>
+
+
+    <script type="application/javascript" src="{{.Head.JS}}"></script>
+
+{{end}}

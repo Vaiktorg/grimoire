@@ -1,0 +1,117 @@
+/* Form ==================================================================================================== */
+/* General Form Style --------------------------------------------------------------------------------------------- */
+
+/* Style for all form elements */
+form {
+    margin: calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 2);
+}
+
+/* Input, Textarea, and Select */
+input, textarea, select, button {
+    font-family: monospace;
+    padding: var(--spacing);
+    margin-bottom: var(--spacing); /* Ensure consistent margin */
+    border: 1px solid var(--secondary);
+    color: var(--font-color);
+    box-sizing: border-box; /* Include padding and border in the width */
+    width: 100%;
+    background-color: transparent;
+}
+
+
+/* Label */
+label {
+    display: block;
+    font-weight: bold;
+    text-align: left;
+}
+
+/* Focus State */
+input:focus, textarea:focus, select:focus, button:focus {
+    border-color: #666;
+    outline: none;
+}
+
+/* Disabled State */
+input:disabled, textarea:disabled, select:disabled, button:disabled {
+    color: #aaa;
+}
+
+input {
+    border-width: 0 0 1px 0;
+    border-color: var(--secondary);
+    accent-color: var(--accent);
+}
+
+/* Required Field */
+input:required, textarea:required, select:required {
+    border-color: var(--accent);
+    border-width: 0 0 1px 0;
+}
+
+/* Validation States */
+input:valid, textarea:valid, select:valid {
+    border-color:var(--secondary);
+    border-width: 0 0 1px 0;
+}
+
+input:invalid, textarea:invalid, select:invalid {
+    border-color: var(--accent);
+    border-width: 0 0 1px 0;
+}
+
+/* Read-only State */
+input[readonly], textarea[readonly] {
+    background-color: var(--bg-color);
+}
+
+
+/* Checkbox and Radio */
+input[type="checkbox"], input[type="radio"] {
+    width: fit-content;
+    border: none;
+    accent-color: var(--accent);
+}
+
+/* File */
+input[type="file"]{
+    margin: var(--spacing) 0;
+    padding: 0 ;
+}
+input[type="file"]::file-selector-button {
+    background: var(--bg-color);
+    color: var(--primary);
+    background-color: var(--secondary);
+    padding: var(--spacing);
+    border: 1px dashed var(--lgrey);
+    margin-right: calc(var(--spacing) * 2);
+    font-family: monospace;
+    text-transform: uppercase;
+}
+input[type="file"]::file-selector-button:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}
+input[type="file"]:valid {
+    border:none;
+}
+
+
+
+/*---------------------------------------------------------------------------------------------------- */
+/* Button */
+button {
+    background-color: var(--secondary);
+    color: var(--primary);
+    border: 0;
+
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: monospace;
+    margin: 0;
+}
+button:hover{
+    margin: 0;
+    text-decoration: underline;
+}

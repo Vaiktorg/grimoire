@@ -1,0 +1,125 @@
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <link type="text/css" rel="stylesheet" href="../../css/authentity.css">
+    <link type="img/gif" rel="icon" href="../../authentity/res/favicon.gif">
+
+    <title>Authentity</title>
+</head>
+
+
+<body class="grid gr16">
+
+<nav class="grid col-12 w25 js-e" nav-dir="h" >
+    <a class="col-3 " href="/site/tmpl/home.html">Home</a>
+    <a class="col-3 " href="/authentity/tmpl/docs.html">Docs</a>
+    <a class="col-3 " href="/site/tmpl/login.html.html">Login</a>
+    <a class="col-3 " href="/authentity/tmpl/signup.html">Sign Up</a>
+</nav>
+
+<main class="col-12 grid gr16">
+    <header  class="col-grow ct">
+        <a href="/"> <img class="w25 c" src="../../authentity/res/logo.svg" alt="fingerprint, key and shield-lock icons" ></a>
+        <br>
+        <h4 class="">Simple Web Identity</h4>
+    </header>
+
+    <h3 class="col-12 ct" title="Keep It Simple, Stupid approach to zero-trust identity model and authoring service">Authentity is a  <a href="https://people.apache.org/~fhanik/kiss.html" target="_blank">KISS</a> zero-trust identity model authoring service<span class="blink">_</span></h3>
+
+    <div class="flex col-12 w75 c">
+        <fieldset class="fi hover">
+            <legend>Identity</legend>
+            <img class="i64 c" src="../../authentity/res/identity.svg" alt="identity"/>
+            <h4>Account and Identity Management: Authentity provides services for account creation, identity registration, and account retrieval.</h4>
+        </fieldset>
+
+        <fieldset class="fi hover wave">
+            <legend>Authentication</legend>
+            <img class="i128 c" src="../../authentity/res/logo_1024x512.png" alt="authenticate"/>
+            <h4>Authentity uses GWTs; A compact, URL-safe JWT variation. An easier way to represent your authentication structure shared between two parties.</h4>
+        </fieldset>
+
+        <fieldset class="fi hover">
+            <legend>Authorization</legend>
+            <img class="i64 c" src="../../authentity/res/authorize.svg" alt="authenticate"/>
+            <h4>Authorization and Resource Access is achieved via middlewares which ensures access with an extensible RBAC (Role-Based Access Control). </h4>
+        </fieldset>
+
+        <fieldset class="fi hover ">
+            <legend>Authenticity</legend>
+            <img class="i64 c" src="../../authentity/res/key_visualizer.svg" alt="keyvisualizer"/>
+            <h4>Validate access by the correct Issuer and proper receive of the Recipient via customizable Visual Web Tokens (VWT)</h4>
+        </fieldset>
+    </div>
+
+    <a class="col-12 w75 c hover btn" href="#">
+        <h4 class="">It's easy to use! Why not give it a try?</h4>
+        <h3 class="">Get Started</h3>
+    </a>
+
+    <fieldset class="grid col-12 w75 js-c">
+        <legend class="c">Safe / Secure / Private</legend>
+
+        <div class="col-6">
+            <img class="i32 left" src="../../authentity/res/authenticate.svg" alt="authenticate"/>
+            <p class=""><strong>Share What You Want</strong>: You decide how much info you want to provide your identity. It can be a whole portfolio piece, or a contact card. Authentity is your passport to the internet.</p>
+        </div>
+
+        <div class="col-6">
+            <img class="i32 left" src="../../authentity/res/authorize.svg" alt="authenticate"/>
+            <p class=""><strong>Role Based Access Control</strong>: Control access based on general application of Resource, Role, Claims and Permissions. You can even control access based on required Identity information.</p>
+        </div>
+
+        <div class="col-6">
+            <img class="i32 left" src="../../authentity/res/encrypted.svg" alt="authenticate"/>
+            <p class=""><strong>Secure Password Handling</strong>: Secure password handling during the login process. </p>
+        </div>
+
+        <div class="col-6">
+            <img class="i32 left" src="../../authentity/res/key_visualizer.svg" alt="keyvisualizer"/>
+            <p class=""><strong>Text & Visual Authorization</strong>: Authenticate with the use of header token or visual passport which can be used temporarily.</p>
+        </div>
+
+        <div class="col-6">
+            <img class="i32 left" src="../../authentity/res/acc_man.svg" alt="authenticate"/>
+            <p class=""><strong>User Management</strong>: Allows for user management through features like account and profile handling. </p>
+        </div>
+
+        <div class="col-6">
+            <img class="i32 left" src="../../authentity/res/warning.svg" alt="authenticate"/>
+            <p class=""><strong>Error Handling</strong>: Includes error handling and recovery.</p>
+        </div>
+
+        <div class="col-6">
+            <img class="i32 left" src="../../authentity/res/analytics.svg" alt="authenticate"/>
+            <p class=""><strong>Analytics</strong>: CPU, Threads, Memory, and more can be used to maintain app performance and stability. Logging included for debugging and audit purposes. </p>
+        </div>
+
+        <div class="col-6">
+            <img class="i32 left" src="../../authentity/res/service_tree.svg" alt="authenticate"/>
+            <p class=""><strong>Context-Aware Operations</strong>: Contextualized operations for handling and propagating values, cancelation signals, and deadlines across APIs and processes from request level. </p>
+        </div>
+    </fieldset>
+</main>
+
+
+<footer class="grid col-12">
+    <!--// To Half -->
+    <p class="col-6">Blog | Legal | FAQ | Support</p>
+    <img class="col-6 i32" src="../../authentity/res/github-mark.svg" alt="github"/>
+
+    <!--// Bottom Half -->
+    <div class="col-6">
+        <p>Privacy Policy | Terms1 of Service | Cookie Policy</p>
+        <p>Authentity &copy; 2024, All rights reserved.</p>
+        <p>Developed with <3 by <a href="https://vaiktorg.dev/">VKTRG</a></p>
+    </div>
+
+    <div class="col-6 ">
+        <p>7205 Greenfelder Inlet</p>
+        <p>Port Christel</p>
+        <p>DE 14891-9782</p>
+    </div>
+</footer>
+</body>
+

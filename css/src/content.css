@@ -1,0 +1,99 @@
+img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+/* Lists ---------------------------------------------------------------------------------------------------- */
+ul {
+    padding: 0 0 0 calc(var(--spacing) * 4);
+    margin: 0;
+}
+ul > li {
+    margin: 8px 0;
+    color: var(--font-color);
+}
+ul >li > a{
+    color: var(--accent);
+    text-decoration: none;
+}
+ul >li >a:hover {
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+/* Text ---------------------------------------------------------------------------------------------------- */
+
+p {
+    margin: 0;
+    padding: 0;
+}
+
+h1,h2,h3,h4,h5,h6 {
+    width: 100%;
+    margin: 0;
+}
+
+h1 {font-size: var(--h1-fontsize);}
+h2 {font-size: var(--h2-fontsize);}
+h3 {font-size: var(--h3-fontsize);}
+h4 {font-size: var(--h4-fontsize);}
+h5 {font-size: var(--h5-fontsize); color: var(--dgrey);}
+
+
+
+/* Article ---------------------------------------------------------------------------------------------------- */
+article {
+    background-color: var(--bg-color);
+    width: fit-content;
+    height: fit-content;
+    padding: 4em;
+}
+
+/* Pre & Code ---------------------------------------------------------------------------------------------------- */
+pre {
+    padding: var(--spacing);
+    background: #eee;
+    border: dashed 1px #ccc;
+}
+
+code{}
+
+
+/* Table ---------------------------------------------------------------------------------------------------- */
+table{
+    /*Top, Right, Bottom, Left*/
+    margin: calc(var(--spacing) * 4) 0 0 0;
+    width: 100%;
+    border-collapse: collapse;
+}
+thead {
+    background: var(--bg-color);
+    color: var(--font-color)
+}
+tbody{
+    border: 1px dashed var(--secondary);
+}
+tr {
+    border-bottom: 1px dashed var(--secondary);
+}
+th,td {
+    /*Top, Right, Bottom, Left*/
+    padding: 2rem;
+}
+
+
+/* Links ---------------------------------------------------------------------------------------------------- */
+a {
+    color: var(--accent)!important;
+    text-decoration: none;
+    width: fit-content;
+    display: inline-block;
+}
+a:hover {
+    font-weight: bold;
+}
+a:visited {
+    text-decoration: underline overline ;
+}
+
