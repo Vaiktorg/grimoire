@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="ALL" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="6297c14f-1b39-4dc3-904c-26f1696e83be" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/../events/events.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../log/printLogger.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/context.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mux.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ws.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../async/async.go" beforeDir="false" afterPath="$PROJECT_DIR$/../async/async.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../async/example/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/../async/example/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../dashboard/dashboard.go" beforeDir="false" afterPath="$PROJECT_DIR$/../dashboard/dashboard.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/../go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/../go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../log/interface.go" beforeDir="false" afterPath="$PROJECT_DIR$/../log/interfaces.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../log/logger.go" beforeDir="false" afterPath="$PROJECT_DIR$/../log/logger.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/config.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../store/repo.go" beforeDir="false" afterPath="$PROJECT_DIR$/../store/repo.go" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="GOROOT" url="file://$PROJECT_DIR$/../../../go1.21.2" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "vaiktorg"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings">
+    <option name="selectedUrlAndAccountId">
+      <UrlAndAccount>
+        <option name="accountId" value="2a617679-3061-4e4e-8428-c3f4b8069264" />
+        <option name="url" value="https://github.com/vaiktorg/grimoire.git" />
+      </UrlAndAccount>
+    </option>
+  </component>
+  <component name="GoLibraries">
+    <option name="indexEntireGoPath" value="true" />
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/ws.go" root0="FORCE_HIGHLIGHTING" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 1
+}</component>
+  <component name="ProjectId" id="2YveKzhrrQPap8ZORohadIkoSOC" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.go.migrated.go.modules.settings": "true",
+    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "git-widget-placeholder": "updates/logger",
+    "go.import.settings.migrated": "true",
+    "go.sdk.automatically.set": "true",
+    "last_opened_file_path": "C:/Users/User/go/src/grimoire",
+    "settings.editor.selected.configurable": "preferences.lookFeel"
+  }
+}]]></component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VgoProject">
+    <integration-enabled>false</integration-enabled>
+    <settings-migrated>true</settings-migrated>
+  </component>
+</project>

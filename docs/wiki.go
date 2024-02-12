@@ -15,9 +15,11 @@ import (
 	"time"
 )
 
-//go:embed index.html main.js
+//go:embed index.gohtml style.css main.js
 var f embed.FS
+
 var JS template.JS
+var CSS template.CSS
 
 const ReadMeFileName = "readme.md"
 
@@ -42,11 +44,14 @@ type Data struct {
 	Article markdown.Article
 	TOC     []string
 	JS      template.JS
+	CSS     template.CSS
 }
 
 // NewWiki is a constructor function that returns a pointer to a `Wiki` struct
 func NewWiki(config Config) *Wiki {
-	readJS()
+	JS = template.JS(readFS("main.js"))
+	CSS = template.CSS(readFS("style.css"))
+
 	wk := &Wiki{
 		t: template.Must(template.New("").Funcs(template.FuncMap{
 			"base": func(query string) string {
@@ -56,7 +61,7 @@ func NewWiki(config Config) *Wiki {
 				}
 				return v.Query().Get("doc")
 			},
-		}).ParseFS(f, "*.html")),
+		}).ParseFS(f, "*.gohtml")),
 		md:     markdown.NewMarkdown(),
 		config: config,
 		paths:  make(map[string]string),
@@ -135,6 +140,7 @@ func (wk *Wiki) GET(w http.ResponseWriter, r *http.Request) {
 		Article: article,
 		TOC:     wk.TOC(r.URL),
 		JS:      JS,
+		CSS:     CSS,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -198,24 +204,24 @@ func (wk *Wiki) PATCH(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func readJS() {
-	js, err := f.Open("main.js")
+func readFS(filename string) []byte {
+	f, err := f.Open(filename)
 	if err != nil {
 		panic(err)
 	}
 
-	sts, err := js.Stat()
+	sts, err := f.Stat()
 	if err != nil {
 		panic(err)
 	}
 
 	buff := make([]byte, sts.Size())
-	_, err = js.Read(buff)
+	_, err = f.Read(buff)
 	if err != nil {
 		panic(err)
 	}
 
-	JS = template.JS(buff)
+	return buff
 }
 
 func (wk *Wiki) TOC(host *url.URL) []string {
