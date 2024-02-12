@@ -20,8 +20,8 @@ func LoginHandler(service *Authentity) http.HandlerFunc {
 }
 
 func getLogin(service *Authentity, w http.ResponseWriter, r *http.Request) {
-	service.Logger.INFO("login.page.gohtml request received ", r.RemoteAddr+" "+r.Method+" "+r.URL.Path)
-	http.ServeFile(w, r, "tmpl/login.page.gohtml")
+	service.Logger.INFO("login.html request received ", r.RemoteAddr+" "+r.Method+" "+r.URL.Path)
+	http.ServeFile(w, r, "tmpl/login.html")
 }
 
 func postLogin(service *Authentity, w http.ResponseWriter, r *http.Request) {
@@ -39,8 +39,8 @@ func postLogin(service *Authentity, w http.ResponseWriter, r *http.Request) {
 	} else if req.Email != "" {
 		identifier = req.Email
 	} else {
-		service.Logger.ERROR("invalid login.page.gohtml request")
-		http.Error(w, "invalid login.page.gohtml request", http.StatusBadRequest)
+		service.Logger.ERROR("invalid login.html request")
+		http.Error(w, "invalid login.html request", http.StatusBadRequest)
 		return
 	}
 

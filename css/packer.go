@@ -23,7 +23,7 @@ func main() {
 	var buffer bytes.Buffer
 
 	// Read all files in the specified directory
-	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -45,14 +45,17 @@ func main() {
 		}
 
 		return nil
-	}); err != nil {
+	})
+
+	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Write the combined minified CSS to an output file
-	if err := os.WriteFile(outputFile, buffer.Bytes(), 0644); err != nil {
+	err = os.WriteFile(outputFile, buffer.Bytes(), 0644)
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	println("CSS packing complete:", outputFile)
+	log.Println("CSS packing complete:", outputFile)
 }

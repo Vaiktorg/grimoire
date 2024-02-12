@@ -14,7 +14,7 @@ package main
 //
 //type (
 //	Thug struct {
-//		Name    string         `json:"name"`
+//		Type    string         `json:"name"`
 //		Plays   map[string]int `json:"record"`
 //		Money   int            `json:"money"`
 //		Bet     int            `json:"bet"`
@@ -73,13 +73,13 @@ package main
 //	g.Players = make(map[string]*Thug)
 //	for i := 0; i < playerNum; i++ {
 //		thug := &Thug{
-//			Name:    randomdata.SillyName(),
+//			Type:    randomdata.SillyName(),
 //			Plays:   make(map[string]int),
 //			Money:   initialBank,
 //			Bet:     bet,
 //			CanPlay: true,
 //		}
-//		g.Players[thug.Name] = thug
+//		g.Players[thug.Type] = thug
 //	}
 //
 //	g.owner = g.nextThug()
@@ -95,7 +95,7 @@ package main
 //		if g.owner.Money <= 0 {
 //			g.owner.Bet = 0
 //			g.owner.CanPlay = false
-//			delete(g.Players, g.owner.Name)
+//			delete(g.Players, g.owner.Type)
 //
 //			g.owner = g.nextThug()
 //		}
@@ -103,14 +103,14 @@ package main
 //		if g.opponent.Money <= 0 {
 //			g.opponent.Bet = 0
 //			g.opponent.CanPlay = false
-//			delete(g.Players, g.opponent.Name)
+//			delete(g.Players, g.opponent.Type)
 //
 //			g.opponent = g.nextThug()
 //		}
 //
 //		var HGame GameHistory
-//		HGame.Opponent = g.opponent.Name
-//		HGame.Owner = g.owner.Name
+//		HGame.Opponent = g.opponent.Type
+//		HGame.Owner = g.owner.Type
 //
 //		rollDice := func() int { return g.dice.D6() + g.dice.D6() }
 //		roll := rollDice()

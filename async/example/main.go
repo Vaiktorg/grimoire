@@ -6,11 +6,13 @@ import (
 )
 
 func main() {
-	aStr := &async.AsyncOp[string]{Val: "Hello World"}
-	aInt := &async.AsyncOp[int]{Val: 1234567890}
+	strProm := async.AwaitHandler[string](func() (string, error) {
+		return "Hello World", nil
+	})
 
-	strProm := async.Async[string](aStr)
-	intProm := async.Async[int](aInt)
+	intProm := async.AwaitHandler[int](func() (int, error) {
+		return 123, nil
+	})
 
 	err := strProm.Then(func(str string) error {
 		fmt.Println(str)

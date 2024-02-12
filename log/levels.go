@@ -22,6 +22,11 @@ const (
 	LevelFatal              // fatal	- black
 )
 
+func LevelFromString(str string) Level {
+	lvl := LevelNull
+	return lvl.Level(str)
+}
+
 func (l *Level) Set(flag Level)      { *l = *l | flag }
 func (l *Level) Clear(flag Level)    { *l = *l &^ flag }
 func (l *Level) Toggle(flag Level)   { *l = *l ^ flag }
@@ -67,17 +72,3 @@ func (*Level) Level(str string) Level {
 }
 
 // ==================================================
-
-type Size int
-
-func (s Size) Val() int { return int(s) }
-
-const (
-	_ Size = 1.0 << (10 * iota) // ignore first value by assigning to blank identifier
-	KB
-	MB
-	GB
-	TB
-	PB
-	EB
-)

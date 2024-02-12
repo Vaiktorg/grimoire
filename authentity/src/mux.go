@@ -11,7 +11,7 @@ import (
 func (a *Authentity) registerMux() {
 
 	a.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "tmpl/index.layout.gohtml")
+		http.ServeFile(w, r, "tmpl/home.html")
 	})
 	a.mux.HandleFunc("/register", RegisterHandler(a))
 	a.mux.HandleFunc("/login", LoginHandler(a))
@@ -80,8 +80,8 @@ func TokenMiddleware(service *Authentity, next http.Handler) http.HandlerFunc {
 		}
 
 		if err = service.LoginToken(tokenCookie.Value); err != nil {
-			service.Logger.ERROR(err.Error(), "Redirecting to /login.page.gohtml")
-			http.Redirect(w, r, "/auth/login.page.gohtml", http.StatusTemporaryRedirect)
+			service.Logger.ERROR(err.Error(), "Redirecting to /login.html")
+			http.Redirect(w, r, "/auth/login.html", http.StatusTemporaryRedirect)
 			return
 		}
 

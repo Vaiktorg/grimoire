@@ -212,5 +212,4 @@ func (a *Authentity) RefreshToken(tkn string) (gwt.Token, error) {
 		},
 		Body: t.Body,
 	})
-
 }

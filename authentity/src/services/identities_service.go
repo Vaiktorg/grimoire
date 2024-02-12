@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"github.com/vaiktorg/grimoire/authentity/src/entities"
 	"github.com/vaiktorg/grimoire/authentity/src/models"
@@ -90,8 +91,13 @@ func (i *IdentityService) Updates(ctx context.Context, identity *models.Identity
 // ====================================================================================================
 
 func IdentityToModel(identity *entities.Identity) (*models.Identity, error) {
+	decoded, err := base64.URLEncoding.DecodeString(*identity.Resources)
+	if err != nil {
+		return nil, err
+	}
+
 	resource := new(gwt.Resources)
-	if err := resource.Deserialize([]byte(*identity.Resources)); err != nil {
+	if err = resource.Deserialize(decoded); err != nil {
 		return nil, err
 	}
 

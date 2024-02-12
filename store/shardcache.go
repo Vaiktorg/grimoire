@@ -67,7 +67,6 @@ func (s *Shard[T]) delete(key string) {
 
 	delete(s.items, key)
 }
-
 func (c *ShardCache[T]) Set(key string, value T) {
 	c.shards[c.getShardIndex(key)].set(key, value)
 }

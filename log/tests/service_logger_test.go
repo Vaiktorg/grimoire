@@ -4,20 +4,20 @@ import (
 	"errors"
 	"github.com/vaiktorg/grimoire/log"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func TestLogger(t *testing.T) {
-	logger := log.NewLogger(log.Config{ServiceName: "MainLogger"})
-	defer logger.Close()
+	logger := log.NewLogger(&log.Config{ServiceName: "MainLogger", CanOutput: true, Persist: true})
 
 	t.Cleanup(cleanup)
 
 	var serviceLogger log.ILogger
 	t.Run("NewServiceLogger", func(t *testing.T) {
-		serviceName := "ServiceLogger"
-		serviceLogger = logger.NewServiceLogger(log.Config{ServiceName: serviceName, CanOutput: true})
+		serviceLogger = logger.NewServiceLogger(&log.Config{ServiceName: "ServiceLogger", CanOutput: true, Persist: true})
+		serviceName := serviceLogger.ServiceName()
 
 		if serviceLogger.ServiceName() != serviceName {
 			t.Errorf("ServiceName() = %v, want %v", serviceLogger.ServiceName(), serviceName)
@@ -27,55 +27,62 @@ func TestLogger(t *testing.T) {
 	t.Run("LogGeneration", func(t *testing.T) {
 		serviceLogger.INFO("Test Info", "Test Data")
 
-		time.Sleep(sleepTime) // Allow time for log processing
+		time.Sleep(sleepTime)
 
-		if len(serviceLogger.Messages(log.Pagination{Page: 1, Amount: 10})) == 0 {
+		msgs := serviceLogger.Messages(log.Pagination{Page: 1, Amount: 1})
+		l := len(msgs)
+		if l == 0 {
 			t.Error("Expected at least one log entry")
 		}
 	})
 
 	t.Run("ConcurrentLogging", func(t *testing.T) {
-		var wg sync.WaitGroup
+		wg := new(sync.WaitGroup)
+		numMessages := 100
 
-		for i := 0; i < 100; i++ {
-			wg.Add(1)
-			go func(idx int) {
-				defer wg.Done()
-				serviceLogger.DEBUG("Concurrent Log", idx)
-			}(i)
+		wg.Add(numMessages)
+		for i := 0; i < numMessages; i++ {
+			go serviceLogger.DEBUG("Concurrent Log", i)
+			wg.Done()
 		}
 
 		wg.Wait()
 
-		time.Sleep(sleepTime) // Allow time for log processing
+		time.Sleep(sleepTime)
+		messages := serviceLogger.Messages(log.Pagination{Page: 1, Amount: numMessages})
 
-		if len(serviceLogger.Messages(log.Pagination{Page: 1, Amount: 100})) < 100 {
-			t.Error("Expected 100 log entries from concurrent logging")
+		if len(messages) < numMessages {
+			t.Errorf("Expected 100 log entries from concurrent logging; got %d", len(messages))
 		}
 	})
 
 	t.Run("LoggerOutput", func(t *testing.T) {
-		wg := sync.WaitGroup{}
-		go func() {
-			wg.Add(1)
-			serviceLogger.Output(func(l log.Log) error {
-				if l.Service != "ServiceLogger" {
-					t.Errorf("Received l from unexpected service: %v", l.Service)
-					return errors.New("received l from unexpected service")
-				}
+		wg := new(sync.WaitGroup)
 
-				return nil
-			})
+		wg.Add(102)
+		rec := uint64(0)
+
+		go serviceLogger.Output(func(l log.Log) error {
+			if l.Service != serviceLogger.ServiceName() {
+				return errors.New("received l from unexpected service")
+			}
+
+			atomic.AddUint64(&rec, 1)
 			wg.Done()
-		}()
-		wg.Wait()
-		serviceLogger.INFO("Test for Output Channel", "Test Data")
-		time.Sleep(sleepTime)
 
+			return nil
+		})
+
+		serviceLogger.INFO("Test for Output Channel", "Test Data")
+
+		wg.Wait()
+
+		if atomic.LoadUint64(&rec) != 102 {
+			t.Fatalf("not received total sent logs in test")
+		}
 	})
 
 	t.Run("TotalSent", func(t *testing.T) {
-		t.Log("TotalSent")
 		totalSentBefore := logger.TotalSent()
 
 		logger.DEBUG("Test Total Sent", "Test Data")
@@ -85,4 +92,6 @@ func TestLogger(t *testing.T) {
 			t.Error("Expected TotalSent to increase after logging")
 		}
 	})
+
+	logger.Close()
 }

@@ -13,22 +13,10 @@
     padding: 8px;
 }
 
-.g0{ gap:  0 0; }
-.g4 { gap:  4rem; }
-.g8 { gap:  8rem; }
-.g16 { gap:  16rem; }
-
-
-.gr1 { gap:  1rem 0; }
-.gr2 { gap:  2rem 0; }
-.gr4 { gap:  4rem 0; }
-.gr8 { gap:  8rem 0; }
-.gr16 { gap:  16rem 0; }
-
-
-.gc4 { gap:  0 4rem; }
-.gc8 { gap:  0 8rem; }
-.gc16 { gap:  0 16rem; }
+.g0 { gap: 0; }
+.g4 { gap: 4rem; }
+.g8 { gap: 8rem; }
+.g16 { gap: 16rem; }
 
 .w25 { width: 25%; }
 .w50 { width: 50%; }
@@ -36,72 +24,57 @@
 .w100 { width: 100%; }
 
 
-.rt { text-align: right;    }
-.lt { text-align: left;     }
-.ct{  text-align: center;   }
+.c {
+    margin: 0 auto;
+}
+.ct{
+    text-align: center;
+}
 
 .btn {
     text-align: center;
     text-transform: uppercase;
-    background-color: var(--secondary);
-    color: var(--primary) !important;
+    background-color: var(--black);
+    color: var(--accent);
     cursor: pointer;
-    padding: 4rem;
+}
+
+.newline{
+    margin-bottom: calc(var(--spacing) * 16);
 }
 
 h5[data-background]{
     background: attr(data-background color);
 }
 
-.m0 { margin: 0; }
 .m4 { margin: 4rem; }
 .m8 { margin: 8rem; }
 .m16 { margin: 16rem; }
 .m32 { margin: 32rem; }
 
-.p0 { padding: 0; }
-.p1 { padding: 1rem; }
-.p2 { padding: 2rem; }
-.p4 { padding: 4rem; }
-.p8 { padding: 8rem; }
-.p16 { padding: 16rem; }
-.p32 { padding: 32rem; }
+.m0 { margin: 0; }
 
+.mb4{margin-bottom: 4rem!important;}
+.mb8{margin-bottom: 8rem!important;}
+.mb16{margin-bottom: 16rem!important;}
+.mb32{margin-bottom: 32rem!important;}
+
+.mt4{margin-top: 4rem!important;}
+.mt8{margin-top: 8rem!important;}
+.mt16{margin-top: 16rem!important;}
+.mt32{margin-top: 32rem!important;}
+
+.centralize-8 { margin: 8rem auto; }
+.centralize-16 { margin: 16rem auto; }
+.centralize-32{ margin: 32rem auto; }
+.centralize-64 { margin: 64rem auto; }
 
 
 .right{ margin: 0 0 0 auto; float: right }
-.c{ margin: 0 auto; }
 .left {  margin: 0 auto 0 0; float: left}
 
-/* Affects the children */
-.ai-c {align-items: center}
-.ai-s {align-items: start}
-.ai-e {align-items: end}
-.ai-st {align-items: stretch}
-.ai-b {align-items: baseline}
-
-/* Affects itself */
-.as-c {align-self: center; }
-.as-s {align-self: start; }
-.as-e{align-self: end; }
-.as-st{align-self: stretch; }
-.as-b{align-self: baseline; }
-
-.ac-sb {align-content: space-between}
-.ac-s {align-content: start}
-
-.js-c{justify-self: center;}
-.js-s{justify-self: start;}
-.js-e{justify-self: end;}
-.js-sc{justify-self: stretch;}
-.js-b{justify-self: baseline;}
-
-.ji-c {justify-items: center;}
-.ji-s{justify-items: start;}
-.ji-e{justify-items: end;}
+.asc {align-self: center}
 
 .inline {
     display: inline-block; /* Use flexbox for inline elements */
 }
-
-

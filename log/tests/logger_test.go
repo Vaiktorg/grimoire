@@ -3,6 +3,7 @@ package tests
 import (
 	"errors"
 	"github.com/vaiktorg/grimoire/log"
+	"github.com/vaiktorg/grimoire/store"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -14,8 +15,8 @@ import (
 )
 
 const (
-	totalLogAmount = 10000
-	sleepTime      = 1 * time.Millisecond
+	totalLogAmount = store.CurrentLen
+	sleepTime      = 10 * time.Millisecond
 )
 
 func TestMain(m *testing.M) {
@@ -25,28 +26,27 @@ func TestMain(m *testing.M) {
 func TestLoggingCaching(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	logger := log.NewLogger(log.Config{ServiceName: "TestLogger", CanOutput: true})
-	servLogger := logger.NewServiceLogger(log.Config{ServiceName: "TestLoggerService", CanOutput: true})
+	logger := log.NewLogger(&log.Config{ServiceName: "TestLogger", CanOutput: true, Persist: true})
+	defer logger.Close()
+
+	servLogger := logger.NewServiceLogger(&log.Config{ServiceName: "TestLoggerService", CanOutput: true, Persist: true})
 
 	t.Run("ServiceLogger", func(t *testing.T) {
-		defer servLogger.Close()
-
 		// Number of messages to test caching with.
 		numMessages := totalLogAmount
 		receivedMessages := uint64(0)
 
-		// InitialTime
-		tm := time.Now()
-
 		wg := new(sync.WaitGroup)
-		wg.Add(totalLogAmount)
+		wg.Add(numMessages)
+
 		go servLogger.Output(func(l log.Log) error {
-			if l.Service == "TestLoggerService" {
+			if l.Service == servLogger.ServiceName() {
 				defer wg.Done()
 				atomic.AddUint64(&receivedMessages, 1)
 			} else if l.Service == "TestLogger" {
-				t.Errorf("service logger should not receive from main logger")
+				return errors.New("service logger should not receive from main logger")
 			}
+
 			return nil
 		})
 
@@ -64,7 +64,7 @@ func TestLoggingCaching(t *testing.T) {
 				case 3:
 					servLogger.WARN("test WARN message")
 				case 4:
-					servLogger.ERROR(errors.New("test ERROR message"))
+					servLogger.ERROR("test ERROR message")
 				}
 			}(i)
 		}
@@ -77,9 +77,6 @@ func TestLoggingCaching(t *testing.T) {
 			Page:   1,
 			Amount: int(receivedMessages),
 		})
-
-		// Check how long it took us
-		t.Log("Elapsed Time Since: ", time.Since(tm).String())
 
 		// Check if the messages have been cached.
 		if int(receivedMessages) != numMessages {
@@ -98,23 +95,19 @@ func TestLoggingCaching(t *testing.T) {
 	})
 
 	t.Run("MainLogger", func(t *testing.T) {
-		defer logger.Close()
-
 		// Number of messages to test caching with.
 		numMessages := totalLogAmount
 		receivedMessages := uint64(0)
-		// InitialTime
-		tm := time.Now()
 
 		wg := new(sync.WaitGroup)
-		wg.Add(numMessages * 2)
-
 		go logger.Output(func(l log.Log) error {
 			defer wg.Done()
 			atomic.AddUint64(&receivedMessages, 1)
+
 			return nil
 		})
 
+		wg.Add(numMessages * 2)
 		// Send multiple log messages.
 		for i := 0; i < numMessages; i++ {
 			func(msgNum int) {
@@ -129,7 +122,7 @@ func TestLoggingCaching(t *testing.T) {
 				case 3:
 					logger.WARN("test WARN message")
 				case 4:
-					logger.ERROR(errors.New("test ERROR message"))
+					logger.ERROR("test ERROR message")
 				}
 			}(i)
 		}
@@ -140,15 +133,12 @@ func TestLoggingCaching(t *testing.T) {
 		// Retrieve the cached messages.
 		messages := logger.Messages(log.Pagination{
 			Page:   1,
-			Amount: int(receivedMessages),
+			Amount: numMessages,
 		})
 
-		// Check how long it took us
-		t.Log("Elapsed Time Since: ", time.Since(tm).String())
-
 		// Check if the messages have been cached.
-		if int(receivedMessages) != numMessages*2 {
-			t.Errorf("Expected %d cached messages, found %d", numMessages*2, receivedMessages)
+		if int(receivedMessages/2) != numMessages {
+			t.Errorf("Expected %d cached messages, found %d", numMessages, receivedMessages/2)
 			return
 		}
 

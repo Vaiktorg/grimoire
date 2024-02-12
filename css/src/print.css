@@ -1,0 +1,54 @@
+/* Print ==================================================================================================== */
+
+@page {
+    size: A4;
+    margin: 30mm 30mm 30mm 30mm;
+}
+
+@media print
+{
+    body {
+        display: table;
+        padding: 0;
+        margin: 0;
+    }
+
+    article {
+        padding: 0;
+    }
+
+    a, a * {
+        display: none !important;
+    }
+
+    nav, nav > * {
+        display: none!important;
+    }
+
+    hr {display: none;}
+
+    h1 {
+        margin: 0;
+        padding: 0;
+        page-break-before: always;
+    }
+
+    h1, h2, h3, h4, h5 {
+        page-break-after: avoid;
+    }
+
+    body > details {
+        display: none!important;
+    }
+
+    table, figure {
+        page-break-inside: avoid;
+    }
+
+    footer {position: fixed; bottom: 0}
+
+    #pageNumber:after {
+        content: counter(page);
+        counter-increment: page;
+    }
+}

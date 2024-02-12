@@ -1,0 +1,18 @@
+{{define "loglist"}}
+    <table width="100%" >
+        <thead>
+        <tr>
+            <th width="5%">ID</th>
+            <th width="80%">Message</th>
+            <th width="15%">Timestamp</th>
+        </tr>
+        </thead>
+        <tbody hx-ext="sse" sse-connect="/sse" sse-swap="message"  hx-swap="afterbegin">
+
+        </tbody>
+    </table>
+{{end}}
+
+{{- /*gotype: src.Log */ -}}
+{{define "src-card"}}<tr><td>{{.ID}}</td><td class="{{.Level | lower}}"><details class="logMsg"><summary class="Header"><strong>{{.Level}} --> {{if .Service}}{{.Service}}{{else}}{{.Msg}}{{end}}</strong></summary><hr /><div class="log-container"><div class="description"><h3>Description</h3><p>{{.Msg}}</p></div><div class="body"><h3>Body</h3><pre>{{.Data}}</pre></div></div></details></td><td>{{.Timestamp}}</td></tr>{{end}}
+

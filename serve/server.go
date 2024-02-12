@@ -19,16 +19,17 @@ import (
 var GlobalID []byte
 
 type Server struct {
-	AppName string
-	Logger  log.ILogger
+	mu sync.Mutex
 
-	mu      sync.Mutex
+	AppName string
 	addr    string
-	handler http.Handler
-	ws      ws.IWebSocket
 	tlscfg  *TLSConfig
 
+	handler http.Handler
+	ws      ws.IWebSocket
+
 	server *http.Server
+	Logger log.ILogger
 }
 
 type IServer interface {
@@ -47,17 +48,15 @@ func NewServer(config *Config) *Server {
 		config = defaultConfig
 	}
 
-	loggr := config.GetLoggerConfig()
-
 	return &Server{
 		AppName: config.GetAppName(),
 		handler: config.GetHandler(),
 		addr:    config.GetAddr(),
-		Logger:  loggr,
+		Logger:  config.GetLoggerConfig(),
 		tlscfg:  config.GetTLSConfig(),
 		ws: ws.NewWebSocket(&ws.Config{
 			GlobalID: uid.UID(GlobalID),
-			Logger: loggr.NewServiceLogger(&log.Config{
+			Logger: config.Logger.NewServiceLogger(&log.Config{
 				CanPrint:    true,
 				CanOutput:   true,
 				Persist:     true,

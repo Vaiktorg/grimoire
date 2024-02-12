@@ -9,6 +9,7 @@ import (
 	"github.com/vaiktorg/grimoire/log"
 	"github.com/vaiktorg/grimoire/names"
 	"github.com/vaiktorg/grimoire/uid"
+	"os"
 	"testing"
 )
 
@@ -50,6 +51,10 @@ var (
 func TestMain(m *testing.M) {
 	if Auth == nil {
 		panic("auth is nil")
+	}
+
+	if _, err := os.Stat(ServerName); os.IsNotExist(err) {
+		panic("sql db not created")
 	}
 
 	m.Run()

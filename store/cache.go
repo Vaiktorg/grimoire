@@ -96,12 +96,14 @@ func (c *Cache[T]) Write(msg T) {
 		c.isFull = true
 	}
 }
+
 func (c *Cache[T]) FlushLen() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	return c.flushTotal
 }
+
 func (c *Cache[T]) ReadAll(runName string) []T {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -129,6 +131,7 @@ func (c *Cache[T]) ReadAll(runName string) []T {
 
 	return c.buff
 }
+
 func (c *Cache[T]) Flush() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -162,12 +165,14 @@ func (c *Cache[T]) Flush() {
 	c.flushTotal++
 	c.Clear()
 }
+
 func (c *Cache[T]) Clear() {
 	c.size = 0
 	c.wPos = 0
 	c.rPos = 0
 	c.isFull = false
 }
+
 func (c *Cache[T]) fromFiles(key string) []T {
 	if err := c.readLogFiles(); err != nil {
 		return nil
@@ -193,6 +198,7 @@ func (c *Cache[T]) fromFiles(key string) []T {
 
 	return logs
 }
+
 func (c *Cache[T]) readLogFiles() error {
 	return filepath.Walk(".", func(path string, info fs.FileInfo, err error) error {
 		if err != nil {

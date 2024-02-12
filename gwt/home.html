@@ -1,78 +1,37 @@
+<!DOCTYPE html>
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GWT - Go Web Toolkit</title>
     <link rel="stylesheet" href="../css/gwt.css">
-    <title>GWT - Golang Web Token</title>
 </head>
-
+<body class="flex fadeIn">
+<header class="mt64 c w50 mt4">
+    <h1>Welcome to GWT - Go Web Toolkit</h1>
+</header>
 <nav>
     <a href="/authentity/tmpl/home.html">Home</a>
     <a href="/authentity/tmpl/docs.html">Docs</a>
     <a href="/authentity/tmpl/login.html">Login</a>
     <a href="/authentity/tmpl/signup.html">Sign Up</a>
 </nav>
-
-<body class="flex fadeIn">
-
-<header class="mt4  w100">
-    <img class="c w25"  alt="" src="res/logo_1024x512.png">
-    <h4 class="ct c wave">Simpler Web Token for Golang</h4>
-</header>
-
-<main class="">
-    <section class="ct centralize-8 w75">
+<main class="flex flex-dir-col">
+    <section class="ct centralize-16">
         <h2>About GWT</h2>
-        <h4>GWT is a simpler variation of JWT that has everything you need to authenticate & authorize, without any loss of security.</h4>
-        <h4>It is designed to be easy to use, and easy to integrate into your application.</h4>
-        <p>While JWT is a great tool for authentication, it can be a bit too much to use, and can be a bit of an overkill for simple applications.</p>
+        <p>GWT is a set of tools that allows web developers to create and maintain complex JavaScript front-end applications in Go. Instead of writing the front-end code in JavaScript, developers can write in Go, which is then cross-compiled to highly optimized JavaScript that runs across all browsers.</p>
     </section>
-
-    <section class="flex w50 c">
-        <h2 class="ct">Features</h2>
-        <fieldset class="fi">
-            <legend>Visual Hash Tokens for Multi-Factor Authentication:</legend>
-            <p>Ability to create visually encoded tokens for enhanced security.</p>
-            <p>Ease of scanning these tokens with mobile devices or webcams.</p>
-            <p>Resilience against unauthorized duplication or sharing.</p>
-        </fieldset>
-        <fieldset class="fi">
-            <legend>Robust Digital Token Infrastructure:</legend>
-            <p>Comprehensive encoding, decoding, and validation features for digital tokens.</p>
-            <p>Use of strong cryptographic algorithms like SHA-512 for signature generation.</p>
-            <p>Token expiration for added security.</p>
-        </fieldset>
-        <fieldset class="fi">
-            <legend>Customizable Token Structure:</legend>
-            Detail the flexibility to embed diverse data types within tokens, catering to various authentication needs.
-            Demonstrate the potential for storing user information, access permissions, and other relevant data.
-        </fieldset>
-        <fieldset class="fi">
-            <legend>Developer-Friendly API:</legend>
-            Provide a glimpse into the easy-to-use API for token creation, validation, and management, enabling seamless integration into applications.
-        </fieldset>
+    <section class="ct centralize-16">
+        <h2>Features</h2>
+        <ul>
+            <li>Write front-end in Go instead of JavaScript</li>
+            <li>Cross-compile Go to optimized JavaScript</li>
+            <li>Strong typing and tooling of Go</li>
+        </ul>
     </section>
-
 </main>
-
-<footer class="grid rg0 w100 mt16">
-    <!--// To Half -->
-    <p class="col-4">Blog | Legal</p>
-    <p class="col-4">FAQ | Support</p>
-    <div class="col-4">
-        <img class="i32" src="../res/github-mark.svg" alt="github"/>
-    </div>
-
-    <!--// Bottom Half -->
-    <div class="col-4">
-        <p>Privacy Policy | Tergs of Service | Cookie Policy</p>
-        <p>Authentity &copy; 2024, All rights reserved.</p>
-        <p>Developed with <3 by <a href="https://vaiktorg.dev/">VKTRG</a></p>
-    </div>
-    <div class="col-4 ">
-        <p>7205 Greenfelder Inlet</p>
-        <p>Port Christel</p>
-        <p>DE 14891-9782</p>
-    </div>
+<footer class="grid g0 c w100 mt16">
+    <p class="col-4">Developed with <3 by <a href="https://vaiktorg.dev/">VKTRG</a></p>
 </footer>
-
 </body>
+</html>

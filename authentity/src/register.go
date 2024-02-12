@@ -21,7 +21,7 @@ func RegisterHandler(service *Authentity) http.HandlerFunc {
 
 func getRegister(service *Authentity, w http.ResponseWriter, r *http.Request) {
 	service.Logger.INFO("register page requested")
-	http.ServeFile(w, r, "tmpl/register.page.gohtml")
+	http.ServeFile(w, r, "tmpl/register.html")
 }
 
 func postRegister(service *Authentity, w http.ResponseWriter, r *http.Request) {

@@ -3,17 +3,11 @@
 .grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr); /* Creates 12 columns */
-}
-
-body.grid{
-    height: 100vh;
-    grid-template-rows: auto 2fr auto;
+    gap: var(--grid-gap); /* Space between grid items */
 }
 
 /* General grid items styling*/
-[class*="col-"] {
-
-}
+[class*="col-"] {}
 
 /* Flexible grid item */
 .col-grow {
@@ -41,12 +35,13 @@ body.grid{
     display: flex;
     flex-wrap: wrap;
     gap: var(--grid-gap); /* Space between grid items */
+    align-items: flex-start;
 }
 
 /* Flex Grid item */
 .fi {
     flex: 1; /* Each item will grow */
-    min-width: var(--spacing); /* Minimum width */
+    min-width: 16rem;
 }
 
 /* Optional fixed width classes */

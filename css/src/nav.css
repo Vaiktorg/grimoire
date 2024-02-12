@@ -1,52 +1,35 @@
+
+/* Navigation */
 nav {
-    background-color: var(--secondary);
+    position: fixed;
+    top: 0;
+    right: 0;
+    text-align: right;
     padding: var(--spacing);
-
-    overflow-y: auto;
+    background-color: var(--black);
 }
 
-/* This will change the scrollbar for the whole page */
-::-webkit-scrollbar {
-    width: 8px; /* width of the entire scrollbar */
-}
-
-::-webkit-scrollbar-track {
-    background: #999; /* color of the tracking area */
-}
-
-::-webkit-scrollbar-thumb {
-    background: #333; /* color of the scroll thumb */
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--dgrey); /* color of the scroll thumb on hover */
-}
-
-
-/* ------------------------------------------------------------------------------------------------------------- */
-
-nav > a, nav > div > a {
-    color: var(--primary) !important;
-    text-decoration: none;
-    line-height: var(--spacing);
-}
-
-nav > a:hover {
-    color: var(--accent)!important;
-    text-decoration: line-through dashed var(--accent);
-    cursor: pointer;
-}
-
-
-nav[nav-dir="v"] > a {
-    margin-bottom: var(--spacing);
-}
-
-
- /* ------------------------------------------------------------------------------------------------------------- */
-
-nav > header {
-    font-size: var(--h4-fontsize);
+nav header h3 {
+    float: left;
     font-weight: bold;
-    color: var(--dgrey);
+}
+
+nav a, nav header h3 {
+    color: var(--white);
+    text-decoration: none;
+    margin: 0 var(--spacing);
+
+}
+
+nav a {
+    font-weight: lighter;
+}
+
+nav a::after{
+    content: "_";
+}
+
+nav a:hover {
+    text-decoration: underline;
+    cursor: pointer;
 }

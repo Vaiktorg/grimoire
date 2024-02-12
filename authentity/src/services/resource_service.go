@@ -184,7 +184,7 @@ func (r *ResourceService) AddClaim(ctx context.Context, userID uid.UID, resource
 
 	for _, role := range res.GetRole(roleType) {
 		if !role.HasClaim(claim.Key()) {
-			role.AddClaim(gwt.RoleType(claim.Key()), claim.Value())
+			role.AddClaim(claim.Key(), claim.Value())
 			break
 		}
 	}
@@ -206,7 +206,7 @@ func (r *ResourceService) RemoveClaim(ctx context.Context, userID uid.UID, resou
 
 	for _, role := range res.GetRole(roleType) {
 		if role.HasClaim(claim.Key()) {
-			role.DeleteClaim(roleType)
+			role.DeleteClaim(claim.Key())
 			break
 		}
 	}

@@ -1,0 +1,46 @@
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+
+
+    <link type="text/css" rel="stylesheet" href="../../css/authentity.css">
+    <link type="img/gif" rel="icon" href="/static/favicon.gif">
+
+    <title>Login - Authentity</title>
+</head>
+
+<header class="w50 mt64 c">
+    <a href="/"> <img class="w25 c" src="../res/logo.svg" alt="fingerprint, key and shield-lock icons" ></a>
+    <h4 class="c ct">Simple Web Identity</h4>
+</header>
+
+<form class="w25 centralize-128">
+    <fieldset>
+        <legend>Login</legend>
+        <div class="grid">
+            <label class="col-12" for="useremail">Username or Email
+                <input type="text" name="useremail" id="useremail" required>
+            </label>
+
+            <label class="col-12" for="pass">Password
+                <input type="password" name="pass" id="pass" required>
+            </label>
+
+            <label class="col-12" for="passport">Passport
+                <input type="file" name="passport" id="passport" required accept="image/png">
+            </label>
+
+            <div class="grid col-12">
+                <div class="col-6">
+                    <label class="col-3 " for="remember">Remember Me<input type="checkbox" name="remember" id="remember"/></label>
+                    <label class="col-3 " for="remember"><a href="#">Forgot Password</a></label>
+                </div>
+
+                <div class="col-6 right">
+                    <button type="Reset">Reset</button>
+                    <button type="Submit">Submit</button>
+                </div>
+            </div>
+        </div>
+    </fieldset>
+</form>
+

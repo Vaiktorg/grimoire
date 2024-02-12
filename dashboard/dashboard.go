@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/vaiktorg/grimoire/log"
 	"github.com/vaiktorg/grimoire/serve/simws"
+	"github.com/vaiktorg/grimoire/serve/ws"
 	"github.com/vaiktorg/grimoire/uid"
 	"html/template"
 	"net/http"
@@ -50,7 +51,7 @@ func NewDashboard(config *Config) (*Dashboard, error) {
 
 	d := &Dashboard{
 		mux: http.NewServeMux(),
-		ws: simws.NewWebSocket(&simws.Config{
+		ws: simws.NewWebSocket(&ws.Config{
 			GlobalID: uid.NewUID(64),
 			Logger: config.Logger.NewServiceLogger(&log.Config{
 				CanPrint:    true,

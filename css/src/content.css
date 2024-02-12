@@ -4,6 +4,8 @@ img {
     height: auto;
 }
 
+
+
 /* Lists ---------------------------------------------------------------------------------------------------- */
 ul {
     padding: 0 0 0 calc(var(--spacing) * 4);
@@ -11,10 +13,9 @@ ul {
 }
 ul > li {
     margin: 8px 0;
-    color: var(--font-color);
 }
 ul >li > a{
-    color: var(--accent);
+    color: black;
     text-decoration: none;
 }
 ul >li >a:hover {
@@ -25,12 +26,15 @@ ul >li >a:hover {
 /* Text ---------------------------------------------------------------------------------------------------- */
 
 p {
-    margin: 0;
+    margin: 0 0 0 0;
     padding: 0;
+    color: black!important;
 }
 
 h1,h2,h3,h4,h5,h6 {
-    width: 100%;
+    font-family: monospace;
+}
+h1{
     margin: 0;
 }
 
@@ -38,13 +42,13 @@ h1 {font-size: var(--h1-fontsize);}
 h2 {font-size: var(--h2-fontsize);}
 h3 {font-size: var(--h3-fontsize);}
 h4 {font-size: var(--h4-fontsize);}
-h5 {font-size: var(--h5-fontsize); color: var(--dgrey);}
+h5 {font-size: var(--h5-fontsize); color: #666666}
 
 
 
 /* Article ---------------------------------------------------------------------------------------------------- */
 article {
-    background-color: var(--bg-color);
+    background-color: #ffffff;
     width: fit-content;
     height: fit-content;
     padding: 4em;
@@ -68,32 +72,19 @@ table{
     border-collapse: collapse;
 }
 thead {
-    background: var(--bg-color);
-    color: var(--font-color)
+    background: black;
+    color: white;
 }
 tbody{
-    border: 1px dashed var(--secondary);
+    border: 1px dashed black;
 }
 tr {
-    border-bottom: 1px dashed var(--secondary);
+    border-bottom: 1px dashed black;
 }
 th,td {
     /*Top, Right, Bottom, Left*/
-    padding: 2rem;
+    padding: 4px 4px 4px 4px;
 }
 
 
-/* Links ---------------------------------------------------------------------------------------------------- */
-a {
-    color: var(--accent)!important;
-    text-decoration: none;
-    width: fit-content;
-    display: inline-block;
-}
-a:hover {
-    font-weight: bold;
-}
-a:visited {
-    text-decoration: underline overline ;
-}
 
